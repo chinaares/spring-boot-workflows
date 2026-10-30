@@ -366,7 +366,7 @@
     </div>
     <div class="p-card solution">
       <div class="icon">&#128161;</div>
-      <h3>23 Specialized Workflows</h3>
+      <h3>24 Specialized Workflows</h3>
       <p>Hotfixes are fast and minimal. Features are thorough. Refactors have behavioral contracts. Each workflow is purpose-built for its task.</p>
     </div>
   </div>
@@ -390,7 +390,7 @@
         and executes each phase in order, writing output documents and updating state along the way.
       </p>
       <ul class="check">
-        <li>23 skills covering the full dev lifecycle</li>
+        <li>24 skills covering the full dev lifecycle</li>
         <li>27 Spring Boot domain skills (JPA, REST, security, Flyway, testing) loaded on demand by the spring-context router</li>
         <li>Each skill has 3-8 phases with approval gates</li>
         <li>Phase outputs persist as markdown for context recovery</li>
@@ -561,7 +561,7 @@
 <!-- ════════════════════════════ ALL WORKFLOWS ════════════════════════════ -->
 <section id="workflows" class="wrap">
   <div class="sec-hdr reveal">
-    <span class="sec-label">23 Workflow Skills</span>
+    <span class="sec-label">24 Workflow Skills</span>
     <h2>The Right Process for Every Task</h2>
     <p>Purpose-built workflows for every development scenario, from emergency hotfixes to full features</p>
   </div>
@@ -629,6 +629,14 @@
       <div class="desc">Auto-diagnose and fix failing CI/CD pipelines</div>
       <div class="what"><strong>What it does:</strong> Fetches CI failure logs via <code>gh</code> CLI. Classifies: compile error, test failure, lint violation, dependency issue, config error, timeout, or flaky test. Applies targeted fix per category. Pushes and monitors the retry. If it fails again, loops up to 3 times with new diagnosis each round.</div>
       <div class="cmd">/spring-boot-workflows:ci-fix</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128736;&#65039;</div>
+      <h4>CI Setup</h4>
+      <div class="desc">Generate Maven CI workflows for GitHub Actions and Gitea Actions</div>
+      <div class="what"><strong>What it does:</strong> Detects platform, build system, Java version, and quality tooling, then generates test, coverage, static-analysis, and artifact steps. Validates the GitHub/Gitea context namespace and action-URL differences, and keeps the Maven cache path aligned with the real local repository.</div>
+      <div class="cmd">/spring-boot-workflows:ci-setup [--platform github|gitea]</div>
     </div>
 
     <div class="wf-item">

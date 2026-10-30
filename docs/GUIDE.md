@@ -26,7 +26,7 @@ A **portable, spec-driven development workflow system** for Claude Code AI agent
 
 **Core Principles**: Spec before code. Brainstorm before plan. Plan before implement. State persists across sessions. Quality gate before every PR. Spring-aware (build/test commands and the Boot major version auto-detected). Configurable git flow.
 
-**What You Get**: 23 workflow skills (as plugin slash commands), 27 vendored Spring Boot domain skills, 5 brainstorming techniques, 18 orchestration rules enforced on every execution, review checklists (general + Java + Spring Boot), Java/Spring coding rules, multi-session persistence, and a single YAML config file.
+**What You Get**: 24 workflow skills (as plugin slash commands), 27 vendored Spring Boot domain skills, 5 brainstorming techniques, 18 orchestration rules enforced on every execution, review checklists (general + Java + Spring Boot), Java/Spring coding rules, multi-session persistence, and a single YAML config file.
 
 ---
 
@@ -243,6 +243,7 @@ All commands are namespaced under `spring-boot-workflows:`.
 | `/spring-boot-workflows:review <pr-number>` | Review a pull request |
 | `/spring-boot-workflows:release <version>` | Prepare a versioned release |
 | `/spring-boot-workflows:ci-fix [--run <id>]` | Fix CI/CD failures |
+| `/spring-boot-workflows:ci-setup [--platform github\|gitea]` | Generate GitHub/Gitea Actions CI workflows |
 | `/spring-boot-workflows:migrate <type>` | Incremental migration |
 | `/spring-boot-workflows:new-project` | Bootstrap project setup |
 | `/spring-boot-workflows:brainstorm <topic>` | Standalone brainstorming |
@@ -444,7 +445,7 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 
 | Path (relative to plugin root) | Purpose |
 |-------------------------------|---------|
-| `skills/*/SKILL.md` | 23 workflow skills (auto-discovered) |
+| `skills/*/SKILL.md` | 24 workflow skills (auto-discovered) |
 | `skills/_orchestration/RULES.md` | Global orchestration rules |
 | `templates/*.tmpl` | 6 templates (spec, plan, state, skill, changelog, guards.yml) |
 | `rules/*.md` | Java and Spring Boot coding rules |

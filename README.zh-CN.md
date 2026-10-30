@@ -5,7 +5,7 @@
 **面向 Claude Code 的 Spring Boot 开发工作流 —— 结构化的功能交付、按比例伸缩的质量门禁、跨会话状态保持，以及 Spring 专用规则。**
 
 `spring-boot-workflows` 是 **claude-workflows** 编排引擎针对 Java/Spring 项目的特化版本。
-它完整保留了工作流引擎 —— 23 个阶段驱动的技能、18 条编排规则、持久化状态、按比例
+它完整保留了工作流引擎 —— 24 个阶段驱动的技能、18 条编排规则、持久化状态、按比例
 伸缩的评审门禁 —— 只把多语言资产集替换为 Spring Boot 版本：Java 编码规则、Spring Boot
 编码规则、Spring 专用评审清单，以及 27 个内置的 Spring Boot 领域技能，覆盖 JPA、REST、
 安全、数据库迁移、事务与测试。
@@ -68,7 +68,7 @@ claude plugin configure spring-boot-workflows
 
 所有技能的命名空间均为 `spring-boot-workflows`。
 
-### 工作流技能（23 个）
+### 工作流技能（24 个）
 
 | 技能 | 命令 | 说明 |
 |-------|---------|-------------|
@@ -77,6 +77,7 @@ claude plugin configure spring-boot-workflows
 | 新项目 | `/spring-boot-workflows:new-project` | 初始化并搭建新项目 |
 | 紧急修复 | `/spring-boot-workflows:hotfix` | 带回归测试的生产环境紧急修复 |
 | CI 修复 | `/spring-boot-workflows:ci-fix` | 诊断并修复失败的 CI/CD 流水线 |
+| CI 生成 | `/spring-boot-workflows:ci-setup` | 生成 GitHub/Gitea Actions 工作流（Maven、测试、覆盖率、制品） |
 | 诊断 | `/spring-boot-workflows:diagnose` | 通过假设验证进行系统化缺陷排查 |
 | 迁移 | `/spring-boot-workflows:migrate` | 升级依赖、API 或架构模式 |
 | 重构 | `/spring-boot-workflows:refactor` | 以行为契约为保障安全地重构代码 |

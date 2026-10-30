@@ -5,7 +5,7 @@
 **Spring Boot development workflows for Claude Code — structured feature delivery, proportional quality gates, multi-session state, and Spring-specific rules.**
 
 `spring-boot-workflows` is the **claude-workflows** orchestration engine specialized for
-Java/Spring projects. It keeps the workflow engine intact — 23 phase-driven skills, 18
+Java/Spring projects. It keeps the workflow engine intact — 24 phase-driven skills, 18
 orchestration rules, persistent state, proportional review gates — and replaces the
 multi-language asset set with a Spring Boot one: Java coding rules, Spring Boot coding
 rules, Spring-specific review checklists, and 27 vendored Spring Boot domain skills
@@ -70,7 +70,7 @@ and the persistence stack; then writes `.workflows/config.yml`.
 
 All skills are namespaced under `spring-boot-workflows`.
 
-### Workflow skills (23)
+### Workflow skills (24)
 
 | Skill | Command | Description |
 |-------|---------|-------------|
@@ -79,6 +79,7 @@ All skills are namespaced under `spring-boot-workflows`.
 | New Project | `/spring-boot-workflows:new-project` | Bootstrap and scaffold a new project |
 | Hotfix | `/spring-boot-workflows:hotfix` | Emergency production fix with regression testing |
 | CI Fix | `/spring-boot-workflows:ci-fix` | Diagnose and fix failing CI/CD pipelines |
+| CI Setup | `/spring-boot-workflows:ci-setup` | Generate GitHub/Gitea Actions workflows (Maven, tests, coverage, artifacts) |
 | Diagnose | `/spring-boot-workflows:diagnose` | Systematic bug investigation via hypothesis testing |
 | Migrate | `/spring-boot-workflows:migrate` | Upgrade dependencies, APIs, or patterns |
 | Refactor | `/spring-boot-workflows:refactor` | Safely restructure code with behavioral contracts |

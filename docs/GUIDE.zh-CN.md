@@ -26,7 +26,7 @@
 
 **核心原则**：先规格后代码。先头脑风暴后计划。先计划后实现。状态跨会话持久化。每个 PR 之前必过质量门禁。Spring 感知（构建/测试命令与 Boot 主版本自动检测）。Git 流程可配置。
 
-**你将获得**：23 个工作流技能（以插件斜杠命令形式提供）、27 个内置 Spring Boot 领域技能、5 种头脑风暴技法、每次执行都会强制生效的 18 条编排规则、评审清单（通用 + Java + Spring Boot）、Java/Spring 编码规则、多会话持久化，以及单一的 YAML 配置文件。
+**你将获得**：24 个工作流技能（以插件斜杠命令形式提供）、27 个内置 Spring Boot 领域技能、5 种头脑风暴技法、每次执行都会强制生效的 18 条编排规则、评审清单（通用 + Java + Spring Boot）、Java/Spring 编码规则、多会话持久化，以及单一的 YAML 配置文件。
 
 ---
 
@@ -243,6 +243,7 @@ quality:
 | `/spring-boot-workflows:review <pr-number>` | 评审一个拉取请求 |
 | `/spring-boot-workflows:release <version>` | 准备一个带版本号的发布 |
 | `/spring-boot-workflows:ci-fix [--run <id>]` | 修复 CI/CD 失败 |
+| `/spring-boot-workflows:ci-setup [--platform github\|gitea]` | 生成 GitHub/Gitea Actions CI 工作流 |
 | `/spring-boot-workflows:migrate <type>` | 增量迁移 |
 | `/spring-boot-workflows:new-project` | 初始化项目脚手架 |
 | `/spring-boot-workflows:brainstorm <topic>` | 独立的头脑风暴 |
@@ -444,7 +445,7 @@ quality:
 
 | 路径（相对于插件根目录） | 用途 |
 |-------------------------------|---------|
-| `skills/*/SKILL.md` | 23 个工作流技能（自动发现） |
+| `skills/*/SKILL.md` | 24 个工作流技能（自动发现） |
 | `skills/_orchestration/RULES.md` | 全局编排规则 |
 | `templates/*.tmpl` | 6 个模板（spec、plan、state、skill、changelog、guards.yml） |
 | `rules/*.md` | Java 与 Spring Boot 编码规则 |

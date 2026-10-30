@@ -366,7 +366,7 @@
     </div>
     <div class="p-card solution">
       <div class="icon">&#128161;</div>
-      <h3>23 个专用工作流</h3>
+      <h3>24 个专用工作流</h3>
       <p>紧急修复快速而克制，新功能严谨而完整，重构有行为契约兜底。每个工作流都为它的任务量身打造。</p>
     </div>
   </div>
@@ -390,7 +390,7 @@
         按顺序执行每个阶段，同时写出产出文档并更新状态。
       </p>
       <ul class="check">
-        <li>23 个技能，覆盖完整的开发生命周期</li>
+        <li>24 个技能，覆盖完整的开发生命周期</li>
         <li>27 个 Spring Boot 领域技能（JPA、REST、安全、Flyway、测试），由 spring-context 路由按需加载</li>
         <li>每个技能含 3-8 个阶段，并设有审批门</li>
         <li>阶段产物以 markdown 持久化，便于恢复上下文</li>
@@ -561,7 +561,7 @@
 <!-- ════════════════════════════ ALL WORKFLOWS ════════════════════════════ -->
 <section id="workflows" class="wrap">
   <div class="sec-hdr reveal">
-    <span class="sec-label">23 个工作流技能</span>
+    <span class="sec-label">24 个工作流技能</span>
     <h2>为每种任务提供恰当的流程</h2>
     <p>为各种开发场景量身打造的工作流，从紧急热修复到完整的功能开发</p>
   </div>
@@ -629,6 +629,14 @@
       <div class="desc">自动诊断并修复失败的 CI/CD 流水线</div>
       <div class="what"><strong>它做什么：</strong>通过 <code>gh</code> CLI 获取 CI 失败日志。分类：编译错误、测试失败、lint 违规、依赖问题、配置错误、超时，或不稳定的测试。按类别施加针对性修复。推送并监控重试结果。如果再次失败，最多循环 3 次，每轮重新诊断。</div>
       <div class="cmd">/spring-boot-workflows:ci-fix</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128736;&#65039;</div>
+      <h4>CI 生成（CI Setup）</h4>
+      <div class="desc">为 GitHub Actions 与 Gitea Actions 生成 Maven CI 工作流</div>
+      <div class="what"><strong>它做什么：</strong>检测平台、构建系统、Java 版本与质量工具，生成测试、覆盖率、静态分析与制品上传步骤；校验 GitHub/Gitea 的上下文命名空间与 Action URL 差异，并保证 Maven 缓存路径与实际本地仓库一致。</div>
+      <div class="cmd">/spring-boot-workflows:ci-setup [--platform github|gitea]</div>
     </div>
 
     <div class="wf-item">
