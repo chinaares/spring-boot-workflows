@@ -1,0 +1,62 @@
+# Safety guards configuration
+# These rules prevent dangerous operations during workflow execution.
+
+guards:
+  enabled: true
+
+  # Commands that are BLOCKED (cannot execute under any circumstance)
+  block_patterns:
+    - "rm -rf /"
+    - "rm -rf ~"
+    - "rm -rf ."
+    - "rm -fr"
+    - "rm -Rf"
+    - "rm --recursive --force"
+    - "git push --force main"
+    - "git push --force master"
+    - "git push -f main"
+    - "git push -f master"
+    - "git reset --hard"
+    - "DROP DATABASE"
+    - "DROP TABLE"
+    - "TRUNCATE TABLE"
+    - "> /dev/sda"
+    - "mkfs."
+    - "dd if="
+    - ":(){:|:&};:"
+
+  # Commands that trigger a WARNING (ask user before executing)
+  # Note: patterns here should not overlap with block_patterns above
+  warn_patterns:
+    - "git push --force"
+    - "git reset"
+    - "rm -r"
+    - "DELETE FROM"
+    - "UPDATE .* SET .* WHERE"
+    - "git checkout -- ."
+    - "git clean -fd"
+    - "npm publish"
+    - "pip install --upgrade"
+
+  # File paths that should never be read, written, or committed
+  protected_paths:
+    - ".env"
+    - ".env.local"
+    - ".env.production"
+    - "credentials.json"
+    - "service-account.json"
+    - "*.pem"
+    - "*.key"
+    - "id_rsa"
+    - "id_ed25519"
+    - ".npmrc"
+    - ".pypirc"
+
+  # File patterns that should never be committed (warn on git add)
+  no_commit_patterns:
+    - "*.env"
+    - "*.key"
+    - "*.pem"
+    - "*.p12"
+    - "credentials*"
+    - "secret*"

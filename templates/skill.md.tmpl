@@ -1,0 +1,52 @@
+---
+name: {skill_name}
+description: "{description}"
+rules: [{rules}]
+---
+
+# {Skill_Title} Workflow
+
+## Command
+
+```
+/spring-boot-workflows:{skill_name} <target> [{flags}]
+```
+
+{prerequisites}
+
+---
+
+## Step 0: Initialize Workflow (DO THIS FIRST)
+
+Create `.workflows/<target>/` directory and `.workflows/current-state.md` following the execution protocol — YAML frontmatter with workflow name, feature, first phase ACTIVE, all phases list, timestamps, replan_count=0. Add `## Phase History` table and `## Context` section. Read `.workflows/config.yml` for project settings. **Verify the state file exists before Phase 1.**
+
+**After EVERY phase**: write output file + update `.workflows/current-state.md` (advance phase, mark COMPLETED, add ACTIVE row). Print progress. **NEVER skip phases unless config allows. NEVER stop after implementation — continue ALL remaining phases.**
+
+---
+
+## Phase 1: {PHASE_1}
+
+**Goal**: {phase_1_goal}
+
+{phase_1_instructions}
+
+**>> Phase complete** — write output to `.workflows/<target>/01-{phase_1}.md`
+
+---
+
+## Phase 2: {PHASE_2}
+
+**Goal**: {phase_2_goal}
+
+{phase_2_instructions}
+
+**>> Phase complete** — write output to `.workflows/<target>/02-{phase_2}.md`
+
+---
+
+## Error Handling
+
+| Error | Resolution |
+|-------|------------|
+| Target not found | Ask user for correct name or path |
+| Build fails 3+ times | REPLAN — stop, document, get user approval |

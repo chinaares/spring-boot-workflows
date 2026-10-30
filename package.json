@@ -1,0 +1,16 @@
+{
+  "name": "spring-boot-workflows",
+  "version": "1.0.0",
+  "description": "Spring Boot development workflows for Claude Code — the claude-workflows orchestration engine specialized for Java/Spring projects.",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chinaares/spring-boot-workflows.git"
+  },
+  "homepage": "https://chinaares.github.io/spring-boot-workflows/",
+  "bugs": {
+    "url": "https://github.com/chinaares/spring-boot-workflows/issues"
+  },
+  "author": "chinaares",
+  "license": "MIT"
+}

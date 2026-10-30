@@ -1,0 +1,31 @@
+# Team Manifest
+# ─────────────────────────────────────────────
+# Setup:
+#   1. Copy this entire _template/ directory:
+#      cp -r teams/_template teams/<your-team-name>
+#   2. Fill in the fields below
+#   3. Add your skills, rules, and reviews
+#   4. Install: claude plugin configure spring-boot-workflows
+# ─────────────────────────────────────────────
+
+team: ""                           # Team identifier (e.g., "spring", "data", "platform")
+description: ""                    # One-line description of what this team works on
+requires_type: ""                  # Matching --type flag (spring-boot, java, generic)
+
+# Skills — each entry is a directory name under skills/
+# Each must contain a SKILL.md file (see skills/example-skill/SKILL.md)
+skills: []
+  # - integrate-analytics
+  # - create-api-endpoint
+  # - scaffold-screen
+
+# Rules — additional convention files copied to .claude/rules/
+# These are always-on guidance that Claude follows during all work
+rules: []
+  # - architecture.md
+  # - naming-conventions.md
+
+# Reviews — additional checklist files copied to .claude/reviews/
+# Used during /review for team-specific quality gates
+reviews: []
+  # - team-review-checklist.md

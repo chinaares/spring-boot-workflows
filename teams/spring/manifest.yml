@@ -1,0 +1,12 @@
+team: spring
+description: "Spring Boot team conventions — layering, JPA, error model, and test strategy"
+requires_type: spring-boot
+
+# Add your skill directory names here as you create them
+skills: []
+
+rules:
+  - team-conventions.md
+
+reviews:
+  - team-review-checklist.md

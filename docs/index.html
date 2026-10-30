@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Workflows — What It Does & Why You Need It</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a26;
+    --border: #252535;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --accent5: #ff9f43;
+    --text: #e8e8f0;
+    --text-dim: #7a7a90;
+    --text-mid: #a0a0b8;
+    --glow: rgba(108, 99, 255, 0.25);
+    --glow2: rgba(0, 212, 170, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  code, .mono {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  /* ── BG ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  .bg-orb {
+    position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.12; z-index: 0;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+  .orb1 { width: 600px; height: 600px; background: var(--accent); top: -150px; left: -200px; }
+  .orb2 { width: 500px; height: 500px; background: var(--accent2); bottom: -100px; right: -150px; animation-delay: -8s; }
+  .orb3 { width: 350px; height: 350px; background: var(--accent5); top: 40%; left: 60%; animation-delay: -4s; }
+  @keyframes orbFloat {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(40px,-40px) scale(1.08); }
+    66% { transform: translate(-30px,30px) scale(0.92); }
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  nav .logo { font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
+  nav .logo span { color: var(--accent); }
+  nav .links { display: flex; gap: 28px; }
+  nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; transition: color 0.2s; }
+  nav .links a:hover { color: var(--text); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 120px 28px 80px;
+  }
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 16px; font-size: 12px; color: var(--accent2); margin-bottom: 28px;
+    animation: fadeUp .6s ease both;
+  }
+  .hero-pill .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.12;
+    margin-bottom: 20px; animation: fadeUp .6s ease .1s both;
+  }
+  .grad { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero .sub {
+    font-size: 18px; color: var(--text-mid); max-width: 620px; margin-bottom: 36px;
+    animation: fadeUp .6s ease .2s both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
+
+  .hero-cmd {
+    display: inline-block; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 28px; font-family: 'SF Mono',monospace;
+    font-size: 15px; color: var(--accent2); animation: fadeUp .6s ease .3s both;
+    transition: all .3s; cursor: default;
+  }
+  .hero-cmd:hover { border-color: var(--accent2); box-shadow: 0 0 30px var(--glow2); }
+  .hero-cmd .dim { color: var(--text-dim); }
+
+  /* ── SECTION ── */
+  section { padding: 90px 0; }
+  .sec-hdr { text-align: center; margin-bottom: 56px; }
+  .sec-hdr h2 { font-size: 2rem; margin-bottom: 10px; }
+  .sec-hdr p { color: var(--text-dim); font-size: 15px; max-width: 540px; margin: 0 auto; }
+  .sec-label {
+    display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); margin-bottom: 12px; font-weight: 700;
+  }
+
+  /* ── PROBLEM/SOLUTION ── */
+  .problem-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;
+  }
+  .p-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; transition: all .3s;
+  }
+  .p-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .p-card .icon { font-size: 28px; margin-bottom: 14px; }
+  .p-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .p-card p { font-size: 13px; color: var(--text-dim); }
+  .p-card.problem { border-left: 3px solid var(--accent3); }
+  .p-card.solution { border-left: 3px solid var(--accent2); }
+
+  /* ── EXPLAINER BLOCKS ── */
+  .explainer {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+    padding: 48px 0;
+  }
+  .explainer.reverse { direction: rtl; }
+  .explainer.reverse > * { direction: ltr; }
+  .explainer-text h3 { font-size: 22px; margin-bottom: 12px; }
+  .explainer-text p { font-size: 14px; color: var(--text-mid); margin-bottom: 16px; }
+  .explainer-text ul { list-style: none; }
+  .explainer-text li {
+    font-size: 13px; color: var(--text-dim); padding: 5px 0;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .explainer-text li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+  .explainer-text .check li::before { background: var(--accent2); }
+  .explainer-text .dot li::before { background: var(--accent); }
+
+  .explainer-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; font-family: 'SF Mono',monospace; font-size: 12px; line-height: 1.8;
+  }
+  .ev-line { display: flex; gap: 12px; }
+  .ev-num { color: var(--text-dim); min-width: 20px; text-align: right; user-select: none; }
+  .ev-kw { color: var(--accent); }
+  .ev-str { color: var(--accent2); }
+  .ev-cmt { color: #555568; font-style: italic; }
+  .ev-flag { color: var(--accent4); }
+  .ev-val { color: var(--accent5); }
+
+  /* ── WORKFLOW SHOWCASE ── */
+  .wf-showcase {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+  }
+  .wf-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; transition: all .3s; position: relative; overflow: hidden;
+  }
+  .wf-item::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); opacity: 0; transition: opacity .3s;
+  }
+  .wf-item:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .wf-item:hover::after { opacity: 1; }
+  .wf-item .emoji { font-size: 24px; margin-bottom: 12px; }
+  .wf-item h4 { font-size: 15px; margin-bottom: 6px; }
+  .wf-item .desc { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+  .wf-item .what {
+    font-size: 12px; color: var(--text-mid); line-height: 1.7;
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px;
+  }
+  .wf-item .cmd { font-family: monospace; font-size: 11px; color: var(--accent); margin-top: 8px; }
+  .wf-tag {
+    display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-top: 8px;
+  }
+  .wf-tag.new { background: rgba(0,212,170,.12); color: var(--accent2); }
+
+  /* ── USAGE GUIDE ── */
+  .usage-steps { counter-reset: usage-step; max-width: 800px; margin: 0 auto; }
+  .usage-step {
+    counter-increment: usage-step;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px 28px 28px 72px; margin-bottom: 16px; position: relative; transition: all .3s;
+  }
+  .usage-step:hover { border-color: var(--accent); transform: translateX(4px); }
+  .usage-step::before {
+    content: counter(usage-step);
+    position: absolute; left: 24px; top: 26px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .usage-step h4 { font-size: 16px; margin-bottom: 8px; }
+  .usage-step p { font-size: 13px; color: var(--text-mid); margin-bottom: 8px; }
+  .usage-step code { background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--accent2); }
+  .usage-step .cmd-block {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; margin-top: 10px; font-family: 'SF Mono',monospace; font-size: 12px;
+    color: var(--accent2); line-height: 1.8;
+  }
+  .usage-step .cmd-block .cmt { color: #555568; }
+  .usage-step .expect {
+    margin-top: 12px; padding: 12px 16px;
+    background: rgba(108,99,255,0.06); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text-mid);
+  }
+  .usage-step .expect strong { color: var(--accent); }
+  .usage-tips {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    max-width: 800px; margin: 32px auto 0;
+  }
+  .usage-tip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; font-size: 13px;
+  }
+  .usage-tip h5 { font-size: 13px; color: var(--accent2); margin-bottom: 6px; }
+  .usage-tip p { color: var(--text-dim); font-size: 12px; }
+  @media (max-width: 768px) { .usage-tips { grid-template-columns: 1fr; } }
+
+  /* ── HOW IT GIVES ── */
+  .gives-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+  }
+  .gives-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; text-align: center; transition: all .3s;
+  }
+  .gives-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .gives-card .big { font-size: 2.5rem; font-weight: 800; margin-bottom: 4px; }
+  .gives-card .label { font-size: 12px; color: var(--text-dim); }
+
+  /* ── FLOW ── */
+  .flow-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 32px; margin: 24px auto; max-width: 900px; overflow-x: auto;
+  }
+  .flow-row {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .flow-row:last-child { margin-bottom: 0; }
+  .fn {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; font-family: monospace;
+    transition: all .3s; cursor: default; white-space: nowrap;
+  }
+  .fn:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--glow); transform: translateY(-2px); }
+  .fn.green { color: var(--accent2); border-color: rgba(0,212,170,.3); }
+  .fn.purple { color: var(--accent); border-color: rgba(108,99,255,.3); }
+  .fn.yellow { color: var(--accent4); border-color: rgba(255,217,61,.3); }
+  .fn.orange { color: var(--accent5); border-color: rgba(255,159,67,.3); }
+  .fa { color: var(--text-dim); font-size: 14px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 40px; font-size: 12px; color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── REVEAL ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: all .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .problem-grid, .explainer { grid-template-columns: 1fr; }
+    .explainer.reverse { direction: ltr; }
+    nav .links { display: none; }
+    .gives-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo"><span>claude</span>-workflows</div>
+  <div class="links">
+    <a href="#problem">The Problem</a>
+    <a href="#what">What It Does</a>
+    <a href="#workflows">Workflows</a>
+    <a href="#features">Features</a>
+    <a href="#usage">Usage Guide</a>
+    <a href="#gives">What You Get</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════ HERO ════════════════════════════ -->
+<header class="hero">
+  <div class="hero-pill"><span class="pulse"></span> Open Source &middot; MIT License</div>
+  <h1>Stop Prompting.<br>Start <span class="grad">Orchestrating.</span></h1>
+  <p class="sub">
+    Claude Workflows turns Claude Code from a reactive chat assistant into a structured engineering partner
+    that follows specs, brainstorms solutions, writes code phase-by-phase, runs quality gates, and creates PRs
+    &mdash; across multiple sessions, without losing context.
+  </p>
+  <div class="hero-cmd">
+    <span class="dim">/</span>plugin install <span class="ev-str">claude-workflows</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════ THE PROBLEM ════════════════════════════ -->
+<section id="problem" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">The Problem</span>
+    <h2>Claude Code is Powerful. But Unstructured.</h2>
+    <p>Without workflows, every conversation starts from zero. Claude doesn't remember your process, your conventions, or where you left off.</p>
+  </div>
+
+  <div class="problem-grid reveal">
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>No Process Memory</h3>
+      <p>You explain the same architecture decisions, coding conventions, and git flow every single session. Claude forgets everything when context resets.</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>Persistent Workflow State</h3>
+      <p>Claude Workflows stores decisions in YAML state files and context snapshots. Resume any workflow days later with full context intact.</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>Inconsistent Quality</h3>
+      <p>Sometimes Claude writes great code. Sometimes it skips tests, ignores conventions, or creates a PR without review. No guarantees.</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>Quality Gates at Every Boundary</h3>
+      <p>Mandatory review checklists before every PR. Language-specific coding rules loaded before implementation. Focused checks on changed files only.</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>No Structure for Complex Tasks</h3>
+      <p>Building a feature? Claude jumps straight to code. No spec, no plan, no brainstorming alternatives. You get the first thing it thinks of.</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>Phased Execution with Approvals</h3>
+      <p>Gather requirements &rarr; write spec &rarr; brainstorm approaches &rarr; plan &rarr; implement &rarr; test &rarr; review &rarr; PR. Each phase gets your approval.</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>Every Task Treated the Same</h3>
+      <p>A 3-line config fix and a major feature get the same treatment: "Here's the code." No adaptation to complexity or risk level.</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>23 Specialized Workflows</h3>
+      <p>Hotfixes are fast and minimal. Features are thorough. Refactors have behavioral contracts. Each workflow is purpose-built for its task.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WHAT IT DOES ════════════════════════════ -->
+<section id="what" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">What It Does</span>
+    <h2>A Workflow Engine for Claude Code</h2>
+    <p>It installs structured skills, rules, and checklists into your project that guide Claude through disciplined software development</p>
+  </div>
+
+  <!-- Explainer 1: Skills -->
+  <div class="explainer reveal">
+    <div class="explainer-text">
+      <h3>Skills: Step-by-Step Instructions</h3>
+      <p>
+        Each workflow is a <strong>skill</strong> &mdash; a markdown file with detailed phase-by-phase
+        instructions that Claude follows. When you type <code>/claude-workflows:new-feature</code>, Claude reads the skill
+        and executes each phase in order, writing output documents and updating state along the way.
+      </p>
+      <ul class="check">
+        <li>23 skills covering the full dev lifecycle</li>
+        <li>Each skill has 3-8 phases with approval gates</li>
+        <li>Phase outputs persist as markdown for context recovery</li>
+        <li>Skills compose &mdash; new-feature delegates to brainstorm</li>
+        <li>Create your own skills with /claude-workflows:compose-skill</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num">1</span><span class="ev-cmt"># You type:</span></div>
+      <div class="ev-line"><span class="ev-num">2</span><span class="ev-kw">/claude-workflows:new-feature</span> <span class="ev-str">user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num">3</span></div>
+      <div class="ev-line"><span class="ev-num">4</span><span class="ev-cmt"># Claude executes 8 phases:</span></div>
+      <div class="ev-line"><span class="ev-num">5</span><span class="ev-val">Phase 1: GATHER</span> <span class="ev-cmt">— collects requirements</span></div>
+      <div class="ev-line"><span class="ev-num">6</span><span class="ev-val">Phase 2: SPEC</span> <span class="ev-cmt">— writes formal specification</span></div>
+      <div class="ev-line"><span class="ev-num">7</span><span class="ev-val">Phase 3: BRAINSTORM</span> <span class="ev-cmt">— explores approaches with you</span></div>
+      <div class="ev-line"><span class="ev-num">8</span><span class="ev-val">Phase 4: PLAN</span> <span class="ev-cmt">— creates phased impl plan</span></div>
+      <div class="ev-line"><span class="ev-num">9</span><span class="ev-val">Phase 5: BRANCH</span> <span class="ev-cmt">— creates git branch</span></div>
+      <div class="ev-line"><span class="ev-num">10</span><span class="ev-val">Phase 6: IMPLEMENT</span> <span class="ev-cmt">— builds it phase by phase</span></div>
+      <div class="ev-line"><span class="ev-num">11</span><span class="ev-val">Phase 7: TEST</span> <span class="ev-cmt">— verifies correctness</span></div>
+      <div class="ev-line"><span class="ev-num">12</span><span class="ev-flag">QUALITY GATE</span> <span class="ev-cmt">— checks 55+ review items</span></div>
+      <div class="ev-line"><span class="ev-num">13</span><span class="ev-val">Phase 8: PR</span> <span class="ev-cmt">— pushes & creates pull request</span></div>
+    </div>
+  </div>
+
+  <!-- Explainer 2: Rules -->
+  <div class="explainer reverse reveal">
+    <div class="explainer-text">
+      <h3>Rules: Coding Standards on Autopilot</h3>
+      <p>
+        Language-specific <strong>DO/DON'T rules</strong> are loaded before Claude writes any code.
+        These aren't suggestions &mdash; they're directives. "Never use <code>!!</code> in Kotlin."
+        "No <code>any</code> type in TypeScript." Claude follows them without you having to repeat them.
+      </p>
+      <ul class="check">
+        <li>7 language rule files: Kotlin, Compose, TypeScript, React, Python, Swift, Go</li>
+        <li>Auto-loaded based on project.language config</li>
+        <li>Team conventions layer on top of language rules</li>
+        <li>Rules focus on real mistakes, not obvious defaults</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># plugin-bundled rules/kotlin.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Null Safety</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Use <span class="ev-val">?.let {}</span>, Elvis <span class="ev-val">?:</span>, requireNotNull()</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Use <span class="ev-val">!!</span> — ever. No exceptions.</div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Coroutines</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Use <span class="ev-val">viewModelScope</span>, <span class="ev-val">Flow</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Use <span class="ev-val">GlobalScope</span> — causes leaks</div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Sealed Classes</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Exhaustive <span class="ev-val">when</span> on sealed types</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Add <span class="ev-val">else</span> branch for sealed types</div>
+    </div>
+  </div>
+
+  <!-- Explainer 3: Review Checklists -->
+  <div class="explainer reveal">
+    <div class="explainer-text">
+      <h3>Review Checklists: Quality You Can Trust</h3>
+      <p>
+        Before every PR, Claude runs a <strong>self-review</strong> against severity-rated checklists.
+        Critical items (hardcoded secrets, SQL injection, missing auth) <em>must</em> pass.
+        The focused gate only checks items relevant to the files that actually changed.
+      </p>
+      <ul class="check">
+        <li>55+ items in the general checklist (architecture, security, performance, testing)</li>
+        <li>Language-specific checklists add 20-30 targeted checks</li>
+        <li>Severity levels: Critical blocks merge, High should fix, Medium/Low are advisory</li>
+        <li>Team checklists for domain-specific standards</li>
+        <li>Focused gate: security files get all security checks, UI files get XSS checks</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># Pre-PR Quality Gate</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[CRITICAL]</span> No hardcoded secrets <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[CRITICAL]</span> Input validation <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[CRITICAL]</span> SQL injection prevention <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[HIGH]</span>&nbsp;&nbsp;&nbsp;&nbsp; Follows project patterns <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[HIGH]</span>&nbsp;&nbsp;&nbsp;&nbsp; All errors handled <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[HIGH]</span>&nbsp;&nbsp;&nbsp;&nbsp; Tests exist <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-val">[MEDIUM]</span>&nbsp;&nbsp; No N+1 queries <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-val">[MEDIUM]</span>&nbsp;&nbsp; Function length &lt;40 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">Result: ALL CLEAR — creating PR</span></div>
+    </div>
+  </div>
+
+  <!-- Explainer 4: State Persistence -->
+  <div class="explainer reverse reveal">
+    <div class="explainer-text">
+      <h3>State: Never Lose Your Place</h3>
+      <p>
+        Claude Workflows uses a <strong>3-layer persistence model</strong> so you can close your terminal,
+        come back tomorrow, and pick up exactly where you left off. State files use YAML frontmatter
+        for reliable parsing. Context snapshots capture key decisions at every phase boundary.
+      </p>
+      <ul class="dot">
+        <li><strong>Layer 1: State file</strong> &mdash; current phase, branch, retry count, phase history</li>
+        <li><strong>Layer 2: Phase outputs + Context section</strong> &mdash; full details from every phase, key decisions in state file</li>
+        <li><strong>Layer 3: Git + Knowledge graph</strong> &mdash; commits, branches, and cross-workflow decision learning</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># .workflows/current-state.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">---</span></div>
+      <div class="ev-line"><span class="ev-num"></span>workflow: <span class="ev-str">new-feature</span></div>
+      <div class="ev-line"><span class="ev-num"></span>feature: <span class="ev-str">user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num"></span>phase: <span class="ev-val">IMPLEMENT</span></div>
+      <div class="ev-line"><span class="ev-num"></span>branch: <span class="ev-str">feature/user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num"></span>retry_count: <span class="ev-val">0</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">---</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Phase History</span></div>
+      <div class="ev-line"><span class="ev-num"></span>GATHER&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 01-gather.md</div>
+      <div class="ev-line"><span class="ev-num"></span>SPEC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 02-spec.md</div>
+      <div class="ev-line"><span class="ev-num"></span>BRAINSTORM <span class="ev-str">COMPLETED</span> 03-brainstorm.md</div>
+      <div class="ev-line"><span class="ev-num"></span>PLAN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 04-plan.md</div>
+      <div class="ev-line"><span class="ev-num"></span>IMPLEMENT&nbsp; <span class="ev-val">ACTIVE</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WORKFLOW PHASES VISUAL ════════════════════════════ -->
+<section class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">How Phases Flow</span>
+    <h2>Every Workflow is a State Machine</h2>
+    <p>Phases execute sequentially with quality checks at boundaries. Error recovery is built in.</p>
+  </div>
+
+  <div class="flow-visual reveal">
+    <div class="flow-row">
+      <span class="fn green">/claude-workflows:start</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">GATHER</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">SPEC</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">BRAINSTORM</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">PLAN</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn orange">BRANCH</span>
+    </div>
+    <div class="flow-row">
+      <span class="fn orange">IMPLEMENT</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn orange">TEST</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn yellow">QUALITY GATE</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn green">PR</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn green">CHAIN &rarr; next</span>
+    </div>
+    <div style="display:flex;justify-content:center;gap:32px;margin-top:20px;font-size:11px;color:var(--text-dim);">
+      <span><span style="color:var(--accent);">&#9632;</span> Think &amp; Decide</span>
+      <span><span style="color:var(--accent5);">&#9632;</span> Build &amp; Verify</span>
+      <span><span style="color:var(--accent4);">&#9632;</span> Quality Gate</span>
+      <span><span style="color:var(--accent2);">&#9632;</span> Ship &amp; Chain</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ ALL WORKFLOWS ════════════════════════════ -->
+<section id="workflows" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">23 Workflow Skills</span>
+    <h2>The Right Process for Every Task</h2>
+    <p>Purpose-built workflows for every development scenario, from emergency hotfixes to full features</p>
+  </div>
+
+  <div class="wf-showcase reveal">
+    <div class="wf-item">
+      <div class="emoji">&#9881;&#65039;</div>
+      <h4>New Feature</h4>
+      <div class="desc">Complete feature lifecycle from requirements to merged PR</div>
+      <div class="what"><strong>What it does:</strong> Gathers requirements (from Jira, Figma, or interactively), writes a formal spec, brainstorms implementation approaches with you, creates a phased plan ordered by architecture layers, builds it commit-by-commit with build checks, runs tests, then creates a PR after passing quality gates.</div>
+      <div class="cmd">/claude-workflows:new-feature &lt;name&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128293;</div>
+      <h4>Hotfix</h4>
+      <div class="desc">Emergency production fix, optimized for speed</div>
+      <div class="what"><strong>What it does:</strong> Diagnoses the crash from stack traces, Crashlytics, or log files. Pinpoints the root cause. Applies the absolute minimum fix (1-5 lines ideal, warns if >15). Writes a mandatory regression test that fails without the fix. Creates PR to production with cherry-pick plan for dev branch.</div>
+      <div class="cmd">/claude-workflows:hotfix &lt;description&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128260;</div>
+      <h4>Refactor</h4>
+      <div class="desc">Restructure code with behavioral guarantees</div>
+      <div class="what"><strong>What it does:</strong> Maps the full dependency graph (inbound + outbound). Documents a behavioral contract BEFORE touching code. Plans an incremental migration where every step compiles and passes tests. Uses parallel deprecation: new code alongside old, migrate consumers one by one, delete old only when zero references remain.</div>
+      <div class="cmd">/claude-workflows:refactor &lt;target&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128270;</div>
+      <h4>Code Review</h4>
+      <div class="desc">Systematic PR review with inline comments</div>
+      <div class="what"><strong>What it does:</strong> Fetches the PR diff, categorizes files by architecture layer, reads each changed file in full (not just the diff). Checks against loaded checklists with 4 severity levels: error (blocks), warning, suggestion, nitpick. Generates inline comments with actionable fixes. Submits via GitHub API.</div>
+      <div class="cmd">/claude-workflows:review &lt;pr-number&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128161;</div>
+      <h4>Brainstorm</h4>
+      <div class="desc">Interactive design exploration with structured techniques</div>
+      <div class="what"><strong>What it does:</strong> Facilitates a collaborative conversation (never solo analysis). Uses techniques: Trade-off Matrix, Six Thinking Hats, SCAMPER, Reverse Brainstorm, Constraint Mapping. Three depth levels based on complexity. Scores options with weighted criteria. Surfaces relevant past decisions from the knowledge graph. You decide &mdash; Claude facilitates.</div>
+      <div class="cmd">/claude-workflows:brainstorm --topic "..."</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#129514;</div>
+      <h4>Test Generation</h4>
+      <div class="desc">Coverage analysis, branch mapping, categorized tests</div>
+      <div class="what"><strong>What it does:</strong> Analyzes the target's public API, maps every code branch (happy, error, edge, state, concurrency). Plans tests tagged [HAPPY] [ERROR] [EDGE] [STATE] [INTEGRATION]. Writes them with Given/When/Then naming. Runs coverage checks against a configurable target (default 90%). Reports gaps with reasons.</div>
+      <div class="cmd">/claude-workflows:test &lt;target&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128296;</div>
+      <h4>Extend Feature</h4>
+      <div class="desc">Add capabilities without breaking existing behavior</div>
+      <div class="what"><strong>What it does:</strong> Analyzes the existing feature's code, identifies extension points where new behavior attaches without modifying existing code. Prefers new files over modifications. Guarantees: no signature changes, no test assertion changes, no behavior alterations. Runs full compatibility verification.</div>
+      <div class="cmd">/claude-workflows:extend-feature &lt;name&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#9889;</div>
+      <h4>CI Fix</h4>
+      <div class="desc">Auto-diagnose and fix failing CI/CD pipelines</div>
+      <div class="what"><strong>What it does:</strong> Fetches CI failure logs via <code>gh</code> CLI. Classifies: compile error, test failure, lint violation, dependency issue, config error, timeout, or flaky test. Applies targeted fix per category. Pushes and monitors the retry. If it fails again, loops up to 3 times with new diagnosis each round.</div>
+      <div class="cmd">/claude-workflows:ci-fix</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128674;</div>
+      <h4>Migrate</h4>
+      <div class="desc">Dependencies, APIs, architecture, databases</div>
+      <div class="what"><strong>What it does:</strong> Documents current state before any changes. Evaluates migration strategies (big bang, incremental, parallel run, strangler fig). Creates a plan where every step independently compiles and passes tests. Type-specific guidance: dependency version bumps, API version swaps, architectural pattern migrations, database schema changes with reversible migrations.</div>
+      <div class="cmd">/claude-workflows:migrate &lt;type&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128640;</div>
+      <h4>Release</h4>
+      <div class="desc">Changelog, version bump, branch, PR, tag</div>
+      <div class="what"><strong>What it does:</strong> Generates changelog from git history categorized by conventional commit type. Detects and bumps version in the right file (build.gradle, package.json, Cargo.toml, pyproject.toml, etc.). Creates release branch, PR to production with quality gate, and provides tagging commands for post-merge.</div>
+      <div class="cmd">/claude-workflows:release &lt;version&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#127968;</div>
+      <h4>New Project</h4>
+      <div class="desc">Bootstrap a project with full Claude Code setup</div>
+      <div class="what"><strong>What it does:</strong> Scans for build system markers (Gradle, npm, Cargo, go.mod, etc.), detects architecture patterns, extracts git conventions from history. Generates .workflows/config.yml and CLAUDE.md with build commands, architecture summary, and code conventions. Sets up task tracking scaffolding.</div>
+      <div class="cmd">/claude-workflows:new-project</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128195;</div>
+      <h4>Templates</h4>
+      <div class="desc">Reuse specs and plans from past workflows</div>
+      <div class="what"><strong>What it does:</strong> Save a completed workflow's spec + plan as a reusable template with parameter placeholders. Next time you build a similar feature, <code>/claude-workflows:template use api-endpoint user-mgmt</code> pre-populates the spec and plan, skipping GATHER and SPEC entirely. Templates track usage count.</div>
+      <div class="cmd">/claude-workflows:template save|list|use</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128295;</div>
+      <h4>Skill Composer</h4>
+      <div class="desc">Build custom workflow skills interactively</div>
+      <div class="what"><strong>What it does:</strong> Asks what the skill does, what phases it has, what each phase produces, whether it needs brainstorming or creates a PR. Generates a properly structured SKILL.md with YAML frontmatter, orchestration integration, phase output paths, and error handling. You fill in the phase-specific logic.</div>
+      <div class="cmd">/claude-workflows:compose-skill &lt;name&gt;</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128202;</div>
+      <h4>Metrics</h4>
+      <div class="desc">Track workflow velocity, bottlenecks, and trends</div>
+      <div class="what"><strong>What it does:</strong> Reads telemetry data (JSON lines logged after every phase). Shows completion rates, average durations, bottleneck phases, and per-workflow breakdowns. <code>/metrics trends</code> compares your last 10 workflows vs previous 10 for velocity changes and REPLAN frequency.</div>
+      <div class="cmd">/claude-workflows:metrics [trends]</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128268;</div>
+      <h4>Git Flow</h4>
+      <div class="desc">Branch, commit, PR, merge using your project's conventions</div>
+      <div class="what"><strong>What it does:</strong> Creates branches from configured patterns (feature/{name}, hotfix/{name}). Validates commit messages against your format (conventional, angular, simple). Creates PRs with configured base branch, reviewers, labels, and draft mode. Merges with configured strategy (squash/merge/rebase). Warns on protected branches.</div>
+      <div class="cmd">/claude-workflows:git-flow branch|commit|pr|merge</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128218;</div>
+      <h4>Learn</h4>
+      <div class="desc">Capture and reuse successful patterns</div>
+      <div class="what"><strong>What it does:</strong> Extracts reusable patterns from completed workflows: architecture decisions, implementation patterns, testing strategies, problem resolutions. Stores as markdown with tags. Patterns used 2+ times are marked "proven" and surface automatically during future brainstorming sessions.</div>
+      <div class="cmd">/claude-workflows:learn capture|list|apply</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128269;</div>
+      <h4>Diagnose</h4>
+      <div class="desc">Systematic bug investigation with hypothesis testing</div>
+      <div class="what"><strong>What it does:</strong> Reproduces the bug, generates ranked hypotheses with evidence, then eliminates them one by one using targeted tests or <code>git bisect</code>. Documents the confirmed root cause with exact file, line, and blast radius &mdash; without fixing it. Hands off to <code>/hotfix</code> or <code>/new-feature</code> for the fix.</div>
+      <div class="cmd">/claude-workflows:diagnose &lt;symptom&gt;</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128207;</div>
+      <h4>Scope</h4>
+      <div class="desc">Pre-flight complexity analysis before starting work</div>
+      <div class="what"><strong>What it does:</strong> Scans the codebase for affected files, counts layers touched, checks for breaking changes. Rates complexity: Trivial, Small, Medium, Large, or Epic. Recommends which workflow to use and suggests concrete splits for oversized tasks with dependency ordering.</div>
+      <div class="cmd">/claude-workflows:scope &lt;description&gt;</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128200;</div>
+      <h4>Retrospective</h4>
+      <div class="desc">Analyze workflow history for process improvements</div>
+      <div class="what"><strong>What it does:</strong> Reads telemetry and workflow history to identify wins (high success rate workflows), issues (recurring replan triggers), and bottlenecks (phases that consistently cause trouble). Generates actionable recommendations with specific config changes. Can auto-apply approved config updates.</div>
+      <div class="cmd">/claude-workflows:retrospective</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128737;&#65039;</div>
+      <h4>Guards</h4>
+      <div class="desc">Safety checks for credentials and dangerous operations</div>
+      <div class="what"><strong>What it does:</strong> Scans staged files against configurable block/warn patterns from guards.yml. Detects hardcoded tokens (AKIA, sk-, ghp_, Bearer), protected path violations, and dangerous operations (rm -rf). BLOCK severity stops the operation. WARN prints but allows. Override logging for audit trails.</div>
+      <div class="cmd">/claude-workflows:guards init|check|report</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ KEY FEATURES ════════════════════════════ -->
+<section id="features" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">Power Features</span>
+    <h2>What Makes It Different</h2>
+    <p>Not just prompts &mdash; a complete orchestration engine with intelligence built in</p>
+  </div>
+
+  <div class="wf-showcase reveal">
+    <div class="wf-item">
+      <h4>&#128279; Workflow Chaining</h4>
+      <div class="what">Configure automatic workflow succession in YAML. After <code>/claude-workflows:new-feature</code> completes, Claude suggests <code>/claude-workflows:review --self</code>. After hotfix, suggests <code>/claude-workflows:ci-fix</code>. Zero manual handoffs between related workflows.</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#128248; Context Snapshots</h4>
+      <div class="what">After every phase, key decisions are appended to the Context section in the state file (3-5 bullet points). When Claude's context window compresses old messages during long workflows, it reloads the Context section to recover all prior reasoning. No more "I forgot what we decided in Phase 2."</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#9889; Adaptive Depth</h4>
+      <div class="what">Auto-detects task complexity. A 2-file config change skips SPEC and BRAINSTORM (trivial). A 15-file architectural change forces deep brainstorm with multiple techniques (complex). Override with <code>--depth full</code>. The right amount of process for every task.</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#129504; Knowledge Graph</h4>
+      <div class="what">Decisions are extracted to <code>knowledge.jsonl</code> after every workflow. During future brainstorms, Claude surfaces: "Last time you had similar constraints (offline-first), you chose event sourcing &mdash; it succeeded." Your team's institutional memory, encoded.</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#9879; Parallel Execution Hints</h4>
+      <div class="what">Independent sub-steps within phases are marked for parallel execution. Review's FETCH phase fires off 4 API calls concurrently instead of sequentially. Same correctness, faster completion.</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#128736; 18 Orchestration Rules</h4>
+      <div class="what">Universal rules that apply to every workflow: state initialization, phase outputs, skip logic, quality gates, build detection, completion, pausing, error recovery (REPLAN), skill composition, checkpoints, telemetry, dry-run, chaining, and knowledge extraction. The engine behind every skill.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ USAGE GUIDE ════════════════════════════ -->
+<section id="usage" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">Usage Guide</span>
+    <h2>How to Use the Plugin</h2>
+    <p>From installation to your first feature &mdash; here's exactly what to expect</p>
+  </div>
+
+  <div class="usage-steps reveal">
+    <div class="usage-step">
+      <h4>Install the Plugin</h4>
+      <p>Run these commands inside Claude Code. It will download the plugin and prompt you to configure 5 settings.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Inside Claude Code</span><br>
+        /plugin marketplace add ragaa07/claude-workflows<br>
+        /plugin install claude-workflows<br>
+        <br>
+        <span class="cmt"># You'll be asked:</span><br>
+        <span class="cmt"># - Project type (android, react, python, swift, go, generic)</span><br>
+        <span class="cmt"># - Team (android, ios, frontend, backend, or none)</span><br>
+        <span class="cmt"># - Main branch name (default: main)</span><br>
+        <span class="cmt"># - Dev branch name (default: develop)</span><br>
+        <span class="cmt"># - Commit format (conventional, angular, simple)</span>
+      </div>
+      <div class="expect"><strong>What happens:</strong> The plugin's skills, rules, and checklists become available as <code>/claude-workflows:*</code> commands in every Claude Code session within this project.</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Initialize Your Project</h4>
+      <p>Run setup to detect your project's stack and create the <code>.workflows/</code> directory structure.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Inside Claude Code</span><br>
+        /claude-workflows:setup<br>
+        <br>
+        <span class="cmt"># Or for new projects (does setup + generates CLAUDE.md):</span><br>
+        /claude-workflows:new-project
+      </div>
+      <div class="expect"><strong>What happens:</strong> Creates <code>.workflows/config.yml</code> with your project's detected settings (build system, language, git conventions). Also creates history and learned directories for workflow state. You can customize <code>config.yml</code> after generation.</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Start Your First Workflow</h4>
+      <p>Use <code>/start</code> to see all available workflows, or jump straight to a specific one.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Browse available workflows</span><br>
+        /claude-workflows:start<br>
+        <br>
+        <span class="cmt"># Or go directly to a specific workflow</span><br>
+        /claude-workflows:new-feature user-authentication<br>
+        /claude-workflows:hotfix null-crash-login<br>
+        /claude-workflows:review 42<br>
+        /claude-workflows:brainstorm --topic "caching strategy"
+      </div>
+      <div class="expect"><strong>What happens:</strong> Claude creates a state file at <code>.workflows/current-state.md</code>, shows a progress indicator, and begins the first phase. For <code>/new-feature</code>, it starts by gathering requirements interactively.</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Work Through Each Phase</h4>
+      <p>Claude executes phases sequentially. Some ask for your approval before continuing, others proceed automatically.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Typical interaction during a new-feature workflow:</span><br>
+        <br>
+        <span class="cmt"># GATHER: Claude asks you questions about the feature</span><br>
+        <span class="cmt"># SPEC: Claude writes a spec, asks "approved?"</span><br>
+        <span class="cmt"># BRAINSTORM: Interactive back-and-forth exploring approaches</span><br>
+        <span class="cmt"># PLAN: Claude creates an implementation plan, asks "approved?"</span><br>
+        <span class="cmt"># BRANCH: Creates git branch automatically</span><br>
+        <span class="cmt"># IMPLEMENT: Builds phase by phase with build checks</span><br>
+        <span class="cmt"># TEST: Runs tests, reports coverage</span><br>
+        <span class="cmt"># PR: Runs quality gate, creates pull request</span>
+      </div>
+      <div class="expect"><strong>What to expect:</strong> After each phase, Claude writes an output file (e.g., <code>01-gather.md</code>) and updates the state. A progress line shows where you are: <code>&#10003;GATHER &#10003;SPEC &#9655;BRAINSTORM &#183;PLAN &#183;IMPLEMENT &#183;TEST &#183;PR</code></div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Pause, Resume, and Recover</h4>
+      <p>You can pause at any time and resume later &mdash; even in a new session days later.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Pause current workflow (say "pause" at any time)</span><br>
+        <span class="cmt"># Claude saves progress and renames state to paused-&lt;feature&gt;.md</span><br>
+        <br>
+        <span class="cmt"># Resume later (next session, Claude auto-detects active workflows)</span><br>
+        /claude-workflows:resume<br>
+        <br>
+        <span class="cmt"># If build fails 3+ times, Claude triggers REPLAN</span><br>
+        <span class="cmt"># You review the adjusted plan and approve before continuing</span>
+      </div>
+      <div class="expect"><strong>What to expect:</strong> On resume, Claude validates the branch, checks output files, loads the Context section (key decisions), and picks up exactly where you left off. Session hooks automatically remind you of active workflows when you start Claude Code.</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Review Quality and Ship</h4>
+      <p>Before every PR, Claude runs a self-review against severity-rated checklists.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Quality gate runs automatically in PR phase</span><br>
+        <span class="cmt"># Claude loads general + language-specific + team checklists</span><br>
+        <span class="cmt"># Checks each Critical/High item with explicit evidence</span><br>
+        <span class="cmt"># Fixes Critical/High violations before creating the PR</span><br>
+        <br>
+        <span class="cmt"># You can also review others' PRs:</span><br>
+        /claude-workflows:review 42 --strict
+      </div>
+      <div class="expect"><strong>What to expect:</strong> The PR is created with a structured body: summary, changes organized by phase, test results, and quality checklist. Critical issues are fixed before the PR is created &mdash; not after.</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>Learn and Improve Over Time</h4>
+      <p>After workflows complete, capture patterns and track metrics to improve your process.</p>
+      <div class="cmd-block">
+        <span class="cmt"># Capture patterns from last workflow</span><br>
+        /claude-workflows:learn capture<br>
+        <br>
+        <span class="cmt"># Check workflow metrics</span><br>
+        /claude-workflows:metrics<br>
+        /claude-workflows:metrics health<br>
+        <br>
+        <span class="cmt"># Run a retrospective on recent workflows</span><br>
+        /claude-workflows:retrospective --last 10
+      </div>
+      <div class="expect"><strong>What to expect:</strong> Learned patterns surface automatically during future brainstorming. The knowledge graph grows with every completed workflow. Metrics show completion rates, replan frequency, and bottleneck phases.</div>
+    </div>
+  </div>
+
+  <div class="usage-tips reveal">
+    <div class="usage-tip">
+      <h5>Skip the ceremony for small tasks</h5>
+      <p>Use <code>--depth trivial</code> to skip SPEC and BRAINSTORM for simple changes. Or use <code>/scope</code> first to check if you even need a full workflow.</p>
+    </div>
+    <div class="usage-tip">
+      <h5>Automate approval gates</h5>
+      <p>Use <code>--auto</code> flag on <code>/new-feature</code>, <code>/extend-feature</code>, <code>/refactor</code>, or <code>/migrate</code> to skip interactive approvals. Useful when requirements are well-defined.</p>
+    </div>
+    <div class="usage-tip">
+      <h5>Reuse past work</h5>
+      <p>After completing a good workflow, run <code>/template save api-endpoint</code>. Next time: <code>/template use api-endpoint user-mgmt</code> pre-populates spec and plan.</p>
+    </div>
+    <div class="usage-tip">
+      <h5>Customize everything</h5>
+      <p>Edit <code>.workflows/config.yml</code> to disable brainstorm for hotfixes, change PR base branch, set max plan phases, configure merge strategy, or set up workflow chaining.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WHAT YOU GET ════════════════════════════ -->
+<section id="gives" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">What You Get</span>
+    <h2>The Results</h2>
+    <p>What changes when you add structured workflows to Claude Code</p>
+  </div>
+
+  <div class="gives-grid reveal">
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent2);">&#128736;</div>
+      <div class="big" style="color:var(--accent2);font-size:1.5rem;">Consistency</div>
+      <div class="label">Every feature follows the same process. Every PR passes the same quality bar. No more "Claude forgot the tests" or "Claude used the wrong pattern."</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent);">&#128337;</div>
+      <div class="big" style="color:var(--accent);font-size:1.5rem;">Continuity</div>
+      <div class="label">Close your laptop. Come back in 3 days. Type /claude-workflows:resume. Claude knows exactly where you left off, what was decided, and what's next. Zero ramp-up time.</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent4);">&#128170;</div>
+      <div class="big" style="color:var(--accent4);font-size:1.5rem;">Confidence</div>
+      <div class="label">Quality gates catch security issues, architecture violations, and missing tests BEFORE the PR is created. 55+ checklist items, automatically enforced.</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent5);">&#9889;</div>
+      <div class="big" style="color:var(--accent5);font-size:1.5rem;">Speed</div>
+      <div class="label">Adaptive depth means trivial tasks skip ceremony. Templates reuse past specs. Parallel execution hints batch independent operations. Less overhead, faster delivery.</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent3);">&#128640;</div>
+      <div class="big" style="color:var(--accent3);font-size:1.5rem;">Scalability</div>
+      <div class="label">Team conventions, custom skills, and domain-specific checklists scale across your organization. 4 built-in teams or create your own from the template.</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent2);">&#129504;</div>
+      <div class="big" style="color:var(--accent2);font-size:1.5rem;">Learning</div>
+      <div class="label">The knowledge graph and pattern learning mean your workflows get smarter over time. Past decisions inform future brainstorms. Mistakes captured as lessons.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ SETUP ════════════════════════════ -->
+<section class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">Get Started</span>
+    <h2>Four Commands. That's It.</h2>
+  </div>
+
+  <div class="explainer-visual reveal" style="max-width:700px;margin:0 auto;font-size:14px;">
+    <div class="ev-line"><span class="ev-cmt"># 1. Add the marketplace (inside Claude Code)</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin marketplace add</span> <span class="ev-str">ragaa07/claude-workflows</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 2. Install the plugin</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">claude-workflows</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 3. Set up your project</span></div>
+    <div class="ev-line"><span class="ev-kw">/claude-workflows:setup</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 4. Start building</span></div>
+    <div class="ev-line"><span class="ev-kw">/claude-workflows:start</span></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ CTA ════════════════════════════ -->
+<section style="text-align:center;padding:80px 28px;">
+  <div class="reveal">
+    <h2 style="font-size:2.2rem;margin-bottom:14px;">
+      Turn Claude Code into an<br><span class="grad">Engineering Partner</span>
+    </h2>
+    <p style="color:var(--text-dim);margin-bottom:28px;font-size:15px;">
+      Open source. Language agnostic. Team extensible.<br>
+      Works with any project that uses Claude Code.
+    </p>
+    <div class="hero-cmd" style="animation:none;margin-bottom:16px;">
+      <span class="dim">/</span>plugin marketplace add ragaa07/claude-workflows
+    </div>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:16px;">
+      <a href="https://github.com/ragaa07/claude-workflows" style="color:var(--accent);text-decoration:none;">GitHub</a>
+      &nbsp;&middot;&nbsp; MIT License &nbsp;&middot;&nbsp; v3.0.0
+    </p>
+  </div>
+</section>
+
+<footer>
+  Built for developers who want Claude Code to work <em>with discipline</em>, not just with speed.
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/PROTOCOL.md\""
+          },
+          {
+            "type": "prompt",
+            "prompt": "Silently check if .workflows/current-state.md exists. If yes, read its YAML frontmatter and tell the user in ONE line: 'Active workflow: <workflow> — <feature> (phase: <phase>). Use /spring-boot-workflows:resume to continue.' Also check for .workflows/paused-*.md files and mention any paused workflows. If nothing found, say nothing."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(gh pr create*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if .workflows/current-state.md exists with an active workflow. If so, verify a quality gate was run by checking for review/checklist mentions in the workflow's output directory files. If NOT found, warn: 'Quality gate not detected — load review checklists and self-check High/Critical items before creating the PR.' This is a warning, not a block — the user can proceed if they choose."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(.workflows/*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You just wrote a file under .workflows/. If this was a phase output file (e.g., 01-gather.md, 02-spec.md, etc.) and NOT current-state.md itself, you MUST now update .workflows/current-state.md BEFORE doing anything else: (1) Read current-state.md, (2) Update frontmatter: set 'phase' to the next phase, 'updated' to now, (3) Mark the completed phase as COMPLETED with the output filename in Phase History, (4) Add a new ACTIVE row for the next phase, (5) Append key decisions to ## Context, (6) Regenerate the Progress section. Do NOT proceed to the next phase until this is done."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(.workflows/*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You just edited a file under .workflows/. If this was a phase output file (e.g., 01-gather.md, 02-spec.md, etc.) and NOT current-state.md itself, you MUST now update .workflows/current-state.md BEFORE doing anything else: (1) Read current-state.md, (2) Update frontmatter: set 'phase' to the next phase, 'updated' to now, (3) Mark the completed phase as COMPLETED with the output filename in Phase History, (4) Add a new ACTIVE row for the next phase, (5) Append key decisions to ## Context, (6) Regenerate the Progress section. Do NOT proceed to the next phase until this is done."
+          }
+        ]
+      }
+    ]
+  }
+}

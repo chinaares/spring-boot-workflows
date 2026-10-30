@@ -1,0 +1,62 @@
+{
+  "name": "spring-boot-workflows",
+  "version": "1.0.0",
+  "description": "Spring Boot development workflows for Claude Code — structured feature delivery, proportional quality gates, multi-session state, and Spring-specific coding rules and review checklists.",
+  "author": {
+    "name": "chinaares",
+    "url": "https://github.com/chinaares"
+  },
+  "license": "MIT",
+  "homepage": "https://chinaares.github.io/spring-boot-workflows/",
+  "repository": "https://github.com/chinaares/spring-boot-workflows",
+  "keywords": [
+    "workflows",
+    "spring-boot",
+    "java",
+    "maven",
+    "development",
+    "quality",
+    "code-review",
+    "testing",
+    "jpa"
+  ],
+  "dependencies": [
+    "spring-boot-template@piomin"
+  ],
+  "skills": [
+    "./skills/spring-boot-4/",
+    "./skills/spring-boot-3/"
+  ],
+  "userConfig": {
+    "project_type": {
+      "type": "string",
+      "title": "Project Type",
+      "description": "Project type: java, spring-boot, generic (determines language rules and review checklists)",
+      "sensitive": false
+    },
+    "team": {
+      "type": "string",
+      "title": "Team",
+      "description": "Team: spring, none (loads team-specific conventions)",
+      "sensitive": false
+    },
+    "git_main_branch": {
+      "type": "string",
+      "title": "Main Branch",
+      "description": "Production branch name (default: main)",
+      "sensitive": false
+    },
+    "git_dev_branch": {
+      "type": "string",
+      "title": "Development Branch",
+      "description": "Development branch name (default: develop)",
+      "sensitive": false
+    },
+    "commit_format": {
+      "type": "string",
+      "title": "Commit Format",
+      "description": "Commit format: conventional, angular, simple (default: conventional)",
+      "sensitive": false
+    }
+  }
+}

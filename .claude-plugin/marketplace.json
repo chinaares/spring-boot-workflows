@@ -1,0 +1,30 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "spring-boot-workflows",
+  "owner": {
+    "name": "chinaares",
+    "url": "https://github.com/chinaares"
+  },
+  "metadata": {
+    "description": "Spring Boot workflows for Claude Code — the claude-workflows orchestration engine specialized for Java/Spring projects, with Spring coding rules, review checklists, and vendored Spring Boot domain skills."
+  },
+  "allowCrossMarketplaceDependenciesOn": [
+    "piomin"
+  ],
+  "plugins": [
+    {
+      "name": "spring-boot-workflows",
+      "version": "1.0.0",
+      "description": "Spring Boot workflows with proportional quality gates, multi-session state, Spring rules and review checklists.",
+      "source": "./",
+      "category": "development",
+      "homepage": "https://chinaares.github.io/spring-boot-workflows/",
+      "dependencies": [
+        {
+          "name": "spring-boot-template",
+          "marketplace": "piomin"
+        }
+      ]
+    }
+  ]
+}

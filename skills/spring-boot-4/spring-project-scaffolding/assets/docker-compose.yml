@@ -1,0 +1,69 @@
+# Docker Compose for local development
+#
+# Usage: docker compose up -d
+#
+# The legacy top-level `version:` key has been removed — the Compose Spec
+# (used by `docker compose`) ignores it and emits a deprecation warning.
+
+services:
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: {{PROJECT_NAME}}-postgres
+    environment:
+      POSTGRES_DB: {{PROJECT_NAME}}db
+      POSTGRES_USER: postgres
+      # Set POSTGRES_PASSWORD in a git-ignored .env file (Compose loads it
+      # automatically) or your shell; no default is committed.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # MySQL Database (alternative)
+  # ============================================================
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: {{PROJECT_NAME}}-mysql
+  #   environment:
+  #     MYSQL_DATABASE: {{PROJECT_NAME}}db
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  #     MYSQL_USER: app
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  postgres_data:
+  # mysql_data:
+
+# ============================================================
+# Application Configuration (application.yml)
+# ============================================================
+# spring:
+#   datasource:
+#     url: jdbc:postgresql://localhost:5432/{{PROJECT_NAME}}db
+#     username: postgres
+#     password: ${POSTGRES_PASSWORD}
+#   jpa:
+#     hibernate:
+#       ddl-auto: validate
+#     open-in-view: false
+#   flyway:
+#     enabled: true

@@ -1,0 +1,115 @@
+# spring-boot-workflows configuration
+# Copy to .workflows/config.yml and customize for your project.
+version: "3.0"
+
+project:
+  name: ""
+  type: "spring-boot"    # spring-boot | java | generic
+  language: "java"       # java
+  team: ""                # spring | (empty)
+  spring:
+    boot_major: 4         # 4 | 3 — selects the Spring Boot knowledge set (see rule-04)
+    build_tool: ""        # maven | gradle | (empty = auto-detect)
+    persistence: ""       # jpa | jdbc | (empty = auto-detect)
+
+git:
+  branches:
+    main: "main"
+    development: "develop"
+    feature: "feature/{name}"
+    bugfix: "bugfix/{name}"
+    hotfix: "hotfix/{name}"
+    release: "release/v{version}"
+  commits:
+    format: "conventional" # conventional | angular | simple
+    types: [feat, fix, refactor, test, docs, chore, style, perf]
+    scopes: true
+    ticket_reference: false
+  pr:
+    base_branch: "develop"
+    draft: false
+    reviewers: []
+    labels: []
+    template: |
+      ## Summary
+      {summary}
+
+      ## Changes
+      {changes}
+
+      ## Test Plan
+      {test_plan}
+  merge:
+    strategy: "squash"     # squash | merge | rebase
+    delete_branch: true
+  protected: ["main", "master", "develop"]
+
+workflows:
+  new-feature:
+    require_spec: true
+    require_tests: true
+    require_brainstorm: true
+    max_plan_phases: 10
+    adaptive: true
+  extend-feature:
+    require_brainstorm: true
+    require_tests: true
+  hotfix:
+    base_branch: ""        # empty = falls back to git.branches.main at runtime
+    require_tests: true
+    max_lines: 15
+  refactor:
+    require_brainstorm: true
+    require_tests: true
+    max_dependents: 50
+  release:
+    changelog: true
+    tag_format: "v{version}"
+  review:
+    checklist: "auto"      # auto | none | <path>
+    size_thresholds: { small: 10, medium: 30, large: 50 }
+  migrate:
+    require_brainstorm: true
+  test:
+    default_coverage: 90
+    default_type: "unit"
+  brainstorm:
+    default_depth: "standard"
+    techniques: ["trade-off-matrix", "six-thinking-hats", "scamper", "reverse-brainstorm", "constraint-mapping"]
+
+state:
+  directory: ".workflows"
+  history: true
+  max_history: 50
+
+skills:
+  disabled: []
+  aliases:
+    build: "new-feature"
+    fix: "hotfix"
+    ship: "release"
+
+chains: {}
+  # new-feature: "review --self"
+  # hotfix: "ci-fix --pr latest"
+
+guards:
+  enabled: false
+  config: ".workflows/guards.yml"
+
+learning:
+  enabled: true
+  storage: ".workflows/learned"
+  knowledge_graph: true
+
+quality:
+  self_review: true
+  focused_gate: true
+  proportional: true
+
+progress:
+  visual: true
+
+telemetry:
+  enabled: false           # opt-in, not opt-out
+  file: ".workflows/telemetry.jsonl"
