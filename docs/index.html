@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Claude Workflows — What It Does & Why You Need It</title>
+<title>Spring Boot Workflows — What It Does & Why You Need It</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -311,12 +311,12 @@
   <div class="hero-pill"><span class="pulse"></span> Open Source &middot; MIT License</div>
   <h1>Stop Prompting.<br>Start <span class="grad">Orchestrating.</span></h1>
   <p class="sub">
-    Claude Workflows turns Claude Code from a reactive chat assistant into a structured engineering partner
+    Spring Boot Workflows turns Claude Code from a reactive chat assistant into a structured engineering partner
     that follows specs, brainstorms solutions, writes code phase-by-phase, runs quality gates, and creates PRs
     &mdash; across multiple sessions, without losing context.
   </p>
   <div class="hero-cmd">
-    <span class="dim">/</span>plugin install <span class="ev-str">claude-workflows</span>
+    <span class="dim">/</span>plugin install <span class="ev-str">spring-boot-workflows</span>
   </div>
 </header>
 
@@ -337,7 +337,7 @@
     <div class="p-card solution">
       <div class="icon">&#128161;</div>
       <h3>Persistent Workflow State</h3>
-      <p>Claude Workflows stores decisions in YAML state files and context snapshots. Resume any workflow days later with full context intact.</p>
+      <p>Spring Boot Workflows stores decisions in YAML state files and context snapshots. Resume any workflow days later with full context intact.</p>
     </div>
     <div class="p-card problem">
       <div class="icon">&#128165;</div>
@@ -377,7 +377,7 @@
   <div class="sec-hdr reveal">
     <span class="sec-label">What It Does</span>
     <h2>A Workflow Engine for Claude Code</h2>
-    <p>It installs structured skills, rules, and checklists into your project that guide Claude through disciplined software development</p>
+    <p>It installs structured skills, rules, and checklists into your project that guide Claude through disciplined Java and Spring Boot development</p>
   </div>
 
   <!-- Explainer 1: Skills -->
@@ -386,20 +386,21 @@
       <h3>Skills: Step-by-Step Instructions</h3>
       <p>
         Each workflow is a <strong>skill</strong> &mdash; a markdown file with detailed phase-by-phase
-        instructions that Claude follows. When you type <code>/claude-workflows:new-feature</code>, Claude reads the skill
+        instructions that Claude follows. When you type <code>/spring-boot-workflows:new-feature</code>, Claude reads the skill
         and executes each phase in order, writing output documents and updating state along the way.
       </p>
       <ul class="check">
         <li>23 skills covering the full dev lifecycle</li>
+        <li>27 Spring Boot domain skills (JPA, REST, security, Flyway, testing) loaded on demand by the spring-context router</li>
         <li>Each skill has 3-8 phases with approval gates</li>
         <li>Phase outputs persist as markdown for context recovery</li>
         <li>Skills compose &mdash; new-feature delegates to brainstorm</li>
-        <li>Create your own skills with /claude-workflows:compose-skill</li>
+        <li>Create your own skills with /spring-boot-workflows:compose-skill</li>
       </ul>
     </div>
     <div class="explainer-visual">
       <div class="ev-line"><span class="ev-num">1</span><span class="ev-cmt"># You type:</span></div>
-      <div class="ev-line"><span class="ev-num">2</span><span class="ev-kw">/claude-workflows:new-feature</span> <span class="ev-str">user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num">2</span><span class="ev-kw">/spring-boot-workflows:new-feature</span> <span class="ev-str">user-authentication</span></div>
       <div class="ev-line"><span class="ev-num">3</span></div>
       <div class="ev-line"><span class="ev-num">4</span><span class="ev-cmt"># Claude executes 8 phases:</span></div>
       <div class="ev-line"><span class="ev-num">5</span><span class="ev-val">Phase 1: GATHER</span> <span class="ev-cmt">— collects requirements</span></div>
@@ -409,7 +410,7 @@
       <div class="ev-line"><span class="ev-num">9</span><span class="ev-val">Phase 5: BRANCH</span> <span class="ev-cmt">— creates git branch</span></div>
       <div class="ev-line"><span class="ev-num">10</span><span class="ev-val">Phase 6: IMPLEMENT</span> <span class="ev-cmt">— builds it phase by phase</span></div>
       <div class="ev-line"><span class="ev-num">11</span><span class="ev-val">Phase 7: TEST</span> <span class="ev-cmt">— verifies correctness</span></div>
-      <div class="ev-line"><span class="ev-num">12</span><span class="ev-flag">QUALITY GATE</span> <span class="ev-cmt">— checks 55+ review items</span></div>
+      <div class="ev-line"><span class="ev-num">12</span><span class="ev-flag">QUALITY GATE</span> <span class="ev-cmt">— checks 37 general + 45 Spring items</span></div>
       <div class="ev-line"><span class="ev-num">13</span><span class="ev-val">Phase 8: PR</span> <span class="ev-cmt">— pushes & creates pull request</span></div>
     </div>
   </div>
@@ -419,31 +420,32 @@
     <div class="explainer-text">
       <h3>Rules: Coding Standards on Autopilot</h3>
       <p>
-        Language-specific <strong>DO/DON'T rules</strong> are loaded before Claude writes any code.
-        These aren't suggestions &mdash; they're directives. "Never use <code>!!</code> in Kotlin."
-        "No <code>any</code> type in TypeScript." Claude follows them without you having to repeat them.
+        Two <strong>DO/DON'T rule files</strong> are loaded before Claude writes any Java code:
+        <code>rules/java.md</code> for the language and <code>rules/spring-boot.md</code> for the framework.
+        These aren't suggestions &mdash; they're directives. "Never use <code>@MockBean</code> in Boot 4."
+        "Never use field injection." Claude follows them without you having to repeat them.
       </p>
       <ul class="check">
-        <li>7 language rule files: Kotlin, Compose, TypeScript, React, Python, Swift, Go</li>
-        <li>Auto-loaded based on project.language config</li>
+        <li>2 rule files: <code>java.md</code> and <code>spring-boot.md</code></li>
+        <li>Auto-loaded by <code>project.type</code> &mdash; spring-boot loads both</li>
         <li>Team conventions layer on top of language rules</li>
-        <li>Rules focus on real mistakes, not obvious defaults</li>
+        <li>Boot 3 vs Boot 4 differences are detected, never guessed</li>
       </ul>
     </div>
     <div class="explainer-visual">
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># plugin-bundled rules/kotlin.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># plugin-bundled rules/java.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Records vs Classes</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Use records for <span class="ev-val">DTOs</span>, payloads, value objects</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Use records for mutable <span class="ev-val">JPA entities</span></div>
       <div class="ev-line"><span class="ev-num"></span></div>
       <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Null Safety</span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Use <span class="ev-val">?.let {}</span>, Elvis <span class="ev-val">?:</span>, requireNotNull()</div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Use <span class="ev-val">!!</span> — ever. No exceptions.</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Mark packages <span class="ev-val">@NullMarked</span> (JSpecify)</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Annotate every parameter explicitly</div>
       <div class="ev-line"><span class="ev-num"></span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Coroutines</span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Use <span class="ev-val">viewModelScope</span>, <span class="ev-val">Flow</span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Use <span class="ev-val">GlobalScope</span> — causes leaks</div>
-      <div class="ev-line"><span class="ev-num"></span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Sealed Classes</span></div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Exhaustive <span class="ev-val">when</span> on sealed types</div>
-      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Add <span class="ev-val">else</span> branch for sealed types</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## Exceptions</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO:</span> Keep the original cause when wrapping</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T:</span> Catch <span class="ev-val">Exception</span> and return null</div>
     </div>
   </div>
 
@@ -457,8 +459,8 @@
         The focused gate only checks items relevant to the files that actually changed.
       </p>
       <ul class="check">
-        <li>55+ items in the general checklist (architecture, security, performance, testing)</li>
-        <li>Language-specific checklists add 20-30 targeted checks</li>
+        <li>37 items in the general checklist (architecture, security, performance, testing)</li>
+        <li>Java adds 44 targeted checks; Spring Boot adds 45</li>
         <li>Severity levels: Critical blocks merge, High should fix, Medium/Low are advisory</li>
         <li>Team checklists for domain-specific standards</li>
         <li>Focused gate: security files get all security checks, UI files get XSS checks</li>
@@ -485,7 +487,7 @@
     <div class="explainer-text">
       <h3>State: Never Lose Your Place</h3>
       <p>
-        Claude Workflows uses a <strong>3-layer persistence model</strong> so you can close your terminal,
+        Spring Boot Workflows uses a <strong>3-layer persistence model</strong> so you can close your terminal,
         come back tomorrow, and pick up exactly where you left off. State files use YAML frontmatter
         for reliable parsing. Context snapshots capture key decisions at every phase boundary.
       </p>
@@ -524,7 +526,7 @@
 
   <div class="flow-visual reveal">
     <div class="flow-row">
-      <span class="fn green">/claude-workflows:start</span>
+      <span class="fn green">/spring-boot-workflows:start</span>
       <span class="fa">&rarr;</span>
       <span class="fn purple">GATHER</span>
       <span class="fa">&rarr;</span>
@@ -570,7 +572,7 @@
       <h4>New Feature</h4>
       <div class="desc">Complete feature lifecycle from requirements to merged PR</div>
       <div class="what"><strong>What it does:</strong> Gathers requirements (from Jira, Figma, or interactively), writes a formal spec, brainstorms implementation approaches with you, creates a phased plan ordered by architecture layers, builds it commit-by-commit with build checks, runs tests, then creates a PR after passing quality gates.</div>
-      <div class="cmd">/claude-workflows:new-feature &lt;name&gt;</div>
+      <div class="cmd">/spring-boot-workflows:new-feature &lt;name&gt;</div>
     </div>
 
     <div class="wf-item">
@@ -578,7 +580,7 @@
       <h4>Hotfix</h4>
       <div class="desc">Emergency production fix, optimized for speed</div>
       <div class="what"><strong>What it does:</strong> Diagnoses the crash from stack traces, Crashlytics, or log files. Pinpoints the root cause. Applies the absolute minimum fix (1-5 lines ideal, warns if >15). Writes a mandatory regression test that fails without the fix. Creates PR to production with cherry-pick plan for dev branch.</div>
-      <div class="cmd">/claude-workflows:hotfix &lt;description&gt;</div>
+      <div class="cmd">/spring-boot-workflows:hotfix &lt;description&gt;</div>
     </div>
 
     <div class="wf-item">
@@ -586,15 +588,15 @@
       <h4>Refactor</h4>
       <div class="desc">Restructure code with behavioral guarantees</div>
       <div class="what"><strong>What it does:</strong> Maps the full dependency graph (inbound + outbound). Documents a behavioral contract BEFORE touching code. Plans an incremental migration where every step compiles and passes tests. Uses parallel deprecation: new code alongside old, migrate consumers one by one, delete old only when zero references remain.</div>
-      <div class="cmd">/claude-workflows:refactor &lt;target&gt;</div>
+      <div class="cmd">/spring-boot-workflows:refactor &lt;target&gt;</div>
     </div>
 
     <div class="wf-item">
       <div class="emoji">&#128270;</div>
       <h4>Code Review</h4>
       <div class="desc">Systematic PR review with inline comments</div>
-      <div class="what"><strong>What it does:</strong> Fetches the PR diff, categorizes files by architecture layer, reads each changed file in full (not just the diff). Checks against loaded checklists with 4 severity levels: error (blocks), warning, suggestion, nitpick. Generates inline comments with actionable fixes. Submits via GitHub API.</div>
-      <div class="cmd">/claude-workflows:review &lt;pr-number&gt;</div>
+      <div class="what"><strong>What it does:</strong> Fetches the PR diff, categorizes files by architecture layer, reads each changed file in full (not just the diff). Checks against loaded checklists with 4 severity levels: Critical (blocks), High, Medium, Low. Generates inline comments with actionable fixes. Submits via GitHub API.</div>
+      <div class="cmd">/spring-boot-workflows:review &lt;pr-number&gt;</div>
     </div>
 
     <div class="wf-item">
@@ -602,7 +604,7 @@
       <h4>Brainstorm</h4>
       <div class="desc">Interactive design exploration with structured techniques</div>
       <div class="what"><strong>What it does:</strong> Facilitates a collaborative conversation (never solo analysis). Uses techniques: Trade-off Matrix, Six Thinking Hats, SCAMPER, Reverse Brainstorm, Constraint Mapping. Three depth levels based on complexity. Scores options with weighted criteria. Surfaces relevant past decisions from the knowledge graph. You decide &mdash; Claude facilitates.</div>
-      <div class="cmd">/claude-workflows:brainstorm --topic "..."</div>
+      <div class="cmd">/spring-boot-workflows:brainstorm --topic "..."</div>
     </div>
 
     <div class="wf-item">
@@ -610,7 +612,7 @@
       <h4>Test Generation</h4>
       <div class="desc">Coverage analysis, branch mapping, categorized tests</div>
       <div class="what"><strong>What it does:</strong> Analyzes the target's public API, maps every code branch (happy, error, edge, state, concurrency). Plans tests tagged [HAPPY] [ERROR] [EDGE] [STATE] [INTEGRATION]. Writes them with Given/When/Then naming. Runs coverage checks against a configurable target (default 90%). Reports gaps with reasons.</div>
-      <div class="cmd">/claude-workflows:test &lt;target&gt;</div>
+      <div class="cmd">/spring-boot-workflows:test &lt;target&gt;</div>
     </div>
 
     <div class="wf-item">
@@ -618,7 +620,7 @@
       <h4>Extend Feature</h4>
       <div class="desc">Add capabilities without breaking existing behavior</div>
       <div class="what"><strong>What it does:</strong> Analyzes the existing feature's code, identifies extension points where new behavior attaches without modifying existing code. Prefers new files over modifications. Guarantees: no signature changes, no test assertion changes, no behavior alterations. Runs full compatibility verification.</div>
-      <div class="cmd">/claude-workflows:extend-feature &lt;name&gt;</div>
+      <div class="cmd">/spring-boot-workflows:extend-feature &lt;name&gt;</div>
     </div>
 
     <div class="wf-item">
@@ -626,7 +628,7 @@
       <h4>CI Fix</h4>
       <div class="desc">Auto-diagnose and fix failing CI/CD pipelines</div>
       <div class="what"><strong>What it does:</strong> Fetches CI failure logs via <code>gh</code> CLI. Classifies: compile error, test failure, lint violation, dependency issue, config error, timeout, or flaky test. Applies targeted fix per category. Pushes and monitors the retry. If it fails again, loops up to 3 times with new diagnosis each round.</div>
-      <div class="cmd">/claude-workflows:ci-fix</div>
+      <div class="cmd">/spring-boot-workflows:ci-fix</div>
     </div>
 
     <div class="wf-item">
@@ -634,31 +636,31 @@
       <h4>Migrate</h4>
       <div class="desc">Dependencies, APIs, architecture, databases</div>
       <div class="what"><strong>What it does:</strong> Documents current state before any changes. Evaluates migration strategies (big bang, incremental, parallel run, strangler fig). Creates a plan where every step independently compiles and passes tests. Type-specific guidance: dependency version bumps, API version swaps, architectural pattern migrations, database schema changes with reversible migrations.</div>
-      <div class="cmd">/claude-workflows:migrate &lt;type&gt;</div>
+      <div class="cmd">/spring-boot-workflows:migrate &lt;type&gt;</div>
     </div>
 
     <div class="wf-item">
       <div class="emoji">&#128640;</div>
       <h4>Release</h4>
       <div class="desc">Changelog, version bump, branch, PR, tag</div>
-      <div class="what"><strong>What it does:</strong> Generates changelog from git history categorized by conventional commit type. Detects and bumps version in the right file (build.gradle, package.json, Cargo.toml, pyproject.toml, etc.). Creates release branch, PR to production with quality gate, and provides tagging commands for post-merge.</div>
-      <div class="cmd">/claude-workflows:release &lt;version&gt;</div>
+      <div class="what"><strong>What it does:</strong> Generates changelog from git history categorized by conventional commit type. Detects and bumps the version in the right file (pom.xml, build.gradle, build.gradle.kts). Creates release branch, PR to production with quality gate, and provides tagging commands for post-merge.</div>
+      <div class="cmd">/spring-boot-workflows:release &lt;version&gt;</div>
     </div>
 
     <div class="wf-item">
       <div class="emoji">&#127968;</div>
       <h4>New Project</h4>
       <div class="desc">Bootstrap a project with full Claude Code setup</div>
-      <div class="what"><strong>What it does:</strong> Scans for build system markers (Gradle, npm, Cargo, go.mod, etc.), detects architecture patterns, extracts git conventions from history. Generates .workflows/config.yml and CLAUDE.md with build commands, architecture summary, and code conventions. Sets up task tracking scaffolding.</div>
-      <div class="cmd">/claude-workflows:new-project</div>
+      <div class="what"><strong>What it does:</strong> Scans for Maven/Gradle build files, detects the Spring Boot major version and persistence stack, then extracts git conventions from history. Generates .workflows/config.yml and CLAUDE.md with build commands, architecture summary, and code conventions. Sets up task tracking scaffolding.</div>
+      <div class="cmd">/spring-boot-workflows:new-project</div>
     </div>
 
     <div class="wf-item">
       <div class="emoji">&#128195;</div>
       <h4>Templates</h4>
       <div class="desc">Reuse specs and plans from past workflows</div>
-      <div class="what"><strong>What it does:</strong> Save a completed workflow's spec + plan as a reusable template with parameter placeholders. Next time you build a similar feature, <code>/claude-workflows:template use api-endpoint user-mgmt</code> pre-populates the spec and plan, skipping GATHER and SPEC entirely. Templates track usage count.</div>
-      <div class="cmd">/claude-workflows:template save|list|use</div>
+      <div class="what"><strong>What it does:</strong> Save a completed workflow's spec + plan as a reusable template with parameter placeholders. Next time you build a similar feature, <code>/spring-boot-workflows:template use api-endpoint user-mgmt</code> pre-populates the spec and plan, skipping GATHER and SPEC entirely. Templates track usage count.</div>
+      <div class="cmd">/spring-boot-workflows:template save|list|use</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -667,7 +669,7 @@
       <h4>Skill Composer</h4>
       <div class="desc">Build custom workflow skills interactively</div>
       <div class="what"><strong>What it does:</strong> Asks what the skill does, what phases it has, what each phase produces, whether it needs brainstorming or creates a PR. Generates a properly structured SKILL.md with YAML frontmatter, orchestration integration, phase output paths, and error handling. You fill in the phase-specific logic.</div>
-      <div class="cmd">/claude-workflows:compose-skill &lt;name&gt;</div>
+      <div class="cmd">/spring-boot-workflows:compose-skill &lt;name&gt;</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -676,7 +678,7 @@
       <h4>Metrics</h4>
       <div class="desc">Track workflow velocity, bottlenecks, and trends</div>
       <div class="what"><strong>What it does:</strong> Reads telemetry data (JSON lines logged after every phase). Shows completion rates, average durations, bottleneck phases, and per-workflow breakdowns. <code>/metrics trends</code> compares your last 10 workflows vs previous 10 for velocity changes and REPLAN frequency.</div>
-      <div class="cmd">/claude-workflows:metrics [trends]</div>
+      <div class="cmd">/spring-boot-workflows:metrics [trends]</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -685,7 +687,7 @@
       <h4>Git Flow</h4>
       <div class="desc">Branch, commit, PR, merge using your project's conventions</div>
       <div class="what"><strong>What it does:</strong> Creates branches from configured patterns (feature/{name}, hotfix/{name}). Validates commit messages against your format (conventional, angular, simple). Creates PRs with configured base branch, reviewers, labels, and draft mode. Merges with configured strategy (squash/merge/rebase). Warns on protected branches.</div>
-      <div class="cmd">/claude-workflows:git-flow branch|commit|pr|merge</div>
+      <div class="cmd">/spring-boot-workflows:git-flow branch|commit|pr|merge</div>
     </div>
 
     <div class="wf-item">
@@ -693,7 +695,7 @@
       <h4>Learn</h4>
       <div class="desc">Capture and reuse successful patterns</div>
       <div class="what"><strong>What it does:</strong> Extracts reusable patterns from completed workflows: architecture decisions, implementation patterns, testing strategies, problem resolutions. Stores as markdown with tags. Patterns used 2+ times are marked "proven" and surface automatically during future brainstorming sessions.</div>
-      <div class="cmd">/claude-workflows:learn capture|list|apply</div>
+      <div class="cmd">/spring-boot-workflows:learn capture|list|apply</div>
     </div>
 
     <div class="wf-item">
@@ -701,7 +703,7 @@
       <h4>Diagnose</h4>
       <div class="desc">Systematic bug investigation with hypothesis testing</div>
       <div class="what"><strong>What it does:</strong> Reproduces the bug, generates ranked hypotheses with evidence, then eliminates them one by one using targeted tests or <code>git bisect</code>. Documents the confirmed root cause with exact file, line, and blast radius &mdash; without fixing it. Hands off to <code>/hotfix</code> or <code>/new-feature</code> for the fix.</div>
-      <div class="cmd">/claude-workflows:diagnose &lt;symptom&gt;</div>
+      <div class="cmd">/spring-boot-workflows:diagnose &lt;symptom&gt;</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -710,7 +712,7 @@
       <h4>Scope</h4>
       <div class="desc">Pre-flight complexity analysis before starting work</div>
       <div class="what"><strong>What it does:</strong> Scans the codebase for affected files, counts layers touched, checks for breaking changes. Rates complexity: Trivial, Small, Medium, Large, or Epic. Recommends which workflow to use and suggests concrete splits for oversized tasks with dependency ordering.</div>
-      <div class="cmd">/claude-workflows:scope &lt;description&gt;</div>
+      <div class="cmd">/spring-boot-workflows:scope &lt;description&gt;</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -719,7 +721,7 @@
       <h4>Retrospective</h4>
       <div class="desc">Analyze workflow history for process improvements</div>
       <div class="what"><strong>What it does:</strong> Reads telemetry and workflow history to identify wins (high success rate workflows), issues (recurring replan triggers), and bottlenecks (phases that consistently cause trouble). Generates actionable recommendations with specific config changes. Can auto-apply approved config updates.</div>
-      <div class="cmd">/claude-workflows:retrospective</div>
+      <div class="cmd">/spring-boot-workflows:retrospective</div>
       <span class="wf-tag new">NEW</span>
     </div>
 
@@ -728,7 +730,7 @@
       <h4>Guards</h4>
       <div class="desc">Safety checks for credentials and dangerous operations</div>
       <div class="what"><strong>What it does:</strong> Scans staged files against configurable block/warn patterns from guards.yml. Detects hardcoded tokens (AKIA, sk-, ghp_, Bearer), protected path violations, and dangerous operations (rm -rf). BLOCK severity stops the operation. WARN prints but allows. Override logging for audit trails.</div>
-      <div class="cmd">/claude-workflows:guards init|check|report</div>
+      <div class="cmd">/spring-boot-workflows:guards init|check|report</div>
     </div>
   </div>
 </section>
@@ -744,7 +746,7 @@
   <div class="wf-showcase reveal">
     <div class="wf-item">
       <h4>&#128279; Workflow Chaining</h4>
-      <div class="what">Configure automatic workflow succession in YAML. After <code>/claude-workflows:new-feature</code> completes, Claude suggests <code>/claude-workflows:review --self</code>. After hotfix, suggests <code>/claude-workflows:ci-fix</code>. Zero manual handoffs between related workflows.</div>
+      <div class="what">Configure automatic workflow succession in YAML. After <code>/spring-boot-workflows:new-feature</code> completes, Claude suggests <code>/spring-boot-workflows:review --self</code>. After hotfix, suggests <code>/spring-boot-workflows:ci-fix</code>. Zero manual handoffs between related workflows.</div>
     </div>
     <div class="wf-item">
       <h4>&#128248; Context Snapshots</h4>
@@ -783,17 +785,17 @@
       <p>Run these commands inside Claude Code. It will download the plugin and prompt you to configure 5 settings.</p>
       <div class="cmd-block">
         <span class="cmt"># Inside Claude Code</span><br>
-        /plugin marketplace add ragaa07/claude-workflows<br>
-        /plugin install claude-workflows<br>
+        /plugin marketplace add chinaares/spring-boot-workflows<br>
+        /plugin install spring-boot-workflows<br>
         <br>
         <span class="cmt"># You'll be asked:</span><br>
-        <span class="cmt"># - Project type (android, react, python, swift, go, generic)</span><br>
-        <span class="cmt"># - Team (android, ios, frontend, backend, or none)</span><br>
+        <span class="cmt"># - Project type (spring-boot, java, generic)</span><br>
+        <span class="cmt"># - Team (spring or none)</span><br>
         <span class="cmt"># - Main branch name (default: main)</span><br>
         <span class="cmt"># - Dev branch name (default: develop)</span><br>
         <span class="cmt"># - Commit format (conventional, angular, simple)</span>
       </div>
-      <div class="expect"><strong>What happens:</strong> The plugin's skills, rules, and checklists become available as <code>/claude-workflows:*</code> commands in every Claude Code session within this project.</div>
+      <div class="expect"><strong>What happens:</strong> The plugin's skills, rules, and checklists become available as <code>/spring-boot-workflows:*</code> commands in every Claude Code session within this project.</div>
     </div>
 
     <div class="usage-step">
@@ -801,10 +803,10 @@
       <p>Run setup to detect your project's stack and create the <code>.workflows/</code> directory structure.</p>
       <div class="cmd-block">
         <span class="cmt"># Inside Claude Code</span><br>
-        /claude-workflows:setup<br>
+        /spring-boot-workflows:setup<br>
         <br>
         <span class="cmt"># Or for new projects (does setup + generates CLAUDE.md):</span><br>
-        /claude-workflows:new-project
+        /spring-boot-workflows:new-project
       </div>
       <div class="expect"><strong>What happens:</strong> Creates <code>.workflows/config.yml</code> with your project's detected settings (build system, language, git conventions). Also creates history and learned directories for workflow state. You can customize <code>config.yml</code> after generation.</div>
     </div>
@@ -814,13 +816,13 @@
       <p>Use <code>/start</code> to see all available workflows, or jump straight to a specific one.</p>
       <div class="cmd-block">
         <span class="cmt"># Browse available workflows</span><br>
-        /claude-workflows:start<br>
+        /spring-boot-workflows:start<br>
         <br>
         <span class="cmt"># Or go directly to a specific workflow</span><br>
-        /claude-workflows:new-feature user-authentication<br>
-        /claude-workflows:hotfix null-crash-login<br>
-        /claude-workflows:review 42<br>
-        /claude-workflows:brainstorm --topic "caching strategy"
+        /spring-boot-workflows:new-feature user-authentication<br>
+        /spring-boot-workflows:hotfix null-crash-login<br>
+        /spring-boot-workflows:review 42<br>
+        /spring-boot-workflows:brainstorm --topic "caching strategy"
       </div>
       <div class="expect"><strong>What happens:</strong> Claude creates a state file at <code>.workflows/current-state.md</code>, shows a progress indicator, and begins the first phase. For <code>/new-feature</code>, it starts by gathering requirements interactively.</div>
     </div>
@@ -851,7 +853,7 @@
         <span class="cmt"># Claude saves progress and renames state to paused-&lt;feature&gt;.md</span><br>
         <br>
         <span class="cmt"># Resume later (next session, Claude auto-detects active workflows)</span><br>
-        /claude-workflows:resume<br>
+        /spring-boot-workflows:resume<br>
         <br>
         <span class="cmt"># If build fails 3+ times, Claude triggers REPLAN</span><br>
         <span class="cmt"># You review the adjusted plan and approve before continuing</span>
@@ -869,7 +871,7 @@
         <span class="cmt"># Fixes Critical/High violations before creating the PR</span><br>
         <br>
         <span class="cmt"># You can also review others' PRs:</span><br>
-        /claude-workflows:review 42 --strict
+        /spring-boot-workflows:review 42 --strict
       </div>
       <div class="expect"><strong>What to expect:</strong> The PR is created with a structured body: summary, changes organized by phase, test results, and quality checklist. Critical issues are fixed before the PR is created &mdash; not after.</div>
     </div>
@@ -879,14 +881,14 @@
       <p>After workflows complete, capture patterns and track metrics to improve your process.</p>
       <div class="cmd-block">
         <span class="cmt"># Capture patterns from last workflow</span><br>
-        /claude-workflows:learn capture<br>
+        /spring-boot-workflows:learn capture<br>
         <br>
         <span class="cmt"># Check workflow metrics</span><br>
-        /claude-workflows:metrics<br>
-        /claude-workflows:metrics health<br>
+        /spring-boot-workflows:metrics<br>
+        /spring-boot-workflows:metrics health<br>
         <br>
         <span class="cmt"># Run a retrospective on recent workflows</span><br>
-        /claude-workflows:retrospective --last 10
+        /spring-boot-workflows:retrospective --last 10
       </div>
       <div class="expect"><strong>What to expect:</strong> Learned patterns surface automatically during future brainstorming. The knowledge graph grows with every completed workflow. Metrics show completion rates, replan frequency, and bottleneck phases.</div>
     </div>
@@ -929,12 +931,12 @@
     <div class="gives-card">
       <div class="big" style="color:var(--accent);">&#128337;</div>
       <div class="big" style="color:var(--accent);font-size:1.5rem;">Continuity</div>
-      <div class="label">Close your laptop. Come back in 3 days. Type /claude-workflows:resume. Claude knows exactly where you left off, what was decided, and what's next. Zero ramp-up time.</div>
+      <div class="label">Close your laptop. Come back in 3 days. Type /spring-boot-workflows:resume. Claude knows exactly where you left off, what was decided, and what's next. Zero ramp-up time.</div>
     </div>
     <div class="gives-card">
       <div class="big" style="color:var(--accent4);">&#128170;</div>
       <div class="big" style="color:var(--accent4);font-size:1.5rem;">Confidence</div>
-      <div class="label">Quality gates catch security issues, architecture violations, and missing tests BEFORE the PR is created. 55+ checklist items, automatically enforced.</div>
+      <div class="label">Quality gates catch security issues, architecture violations, and missing tests BEFORE the PR is created. 37 general + 45 Spring Boot checks, automatically enforced.</div>
     </div>
     <div class="gives-card">
       <div class="big" style="color:var(--accent5);">&#9889;</div>
@@ -944,7 +946,7 @@
     <div class="gives-card">
       <div class="big" style="color:var(--accent3);">&#128640;</div>
       <div class="big" style="color:var(--accent3);font-size:1.5rem;">Scalability</div>
-      <div class="label">Team conventions, custom skills, and domain-specific checklists scale across your organization. 4 built-in teams or create your own from the template.</div>
+      <div class="label">Team conventions, custom skills, and domain-specific checklists scale across your organization. One built-in team (<code>spring</code>) plus a template for your own.</div>
     </div>
     <div class="gives-card">
       <div class="big" style="color:var(--accent2);">&#129504;</div>
@@ -963,16 +965,16 @@
 
   <div class="explainer-visual reveal" style="max-width:700px;margin:0 auto;font-size:14px;">
     <div class="ev-line"><span class="ev-cmt"># 1. Add the marketplace (inside Claude Code)</span></div>
-    <div class="ev-line"><span class="ev-kw">/plugin marketplace add</span> <span class="ev-str">ragaa07/claude-workflows</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin marketplace add</span> <span class="ev-str">chinaares/spring-boot-workflows</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 2. Install the plugin</span></div>
-    <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">claude-workflows</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">spring-boot-workflows</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 3. Set up your project</span></div>
-    <div class="ev-line"><span class="ev-kw">/claude-workflows:setup</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:setup</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 4. Start building</span></div>
-    <div class="ev-line"><span class="ev-kw">/claude-workflows:start</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:start</span></div>
   </div>
 </section>
 
@@ -983,15 +985,15 @@
       Turn Claude Code into an<br><span class="grad">Engineering Partner</span>
     </h2>
     <p style="color:var(--text-dim);margin-bottom:28px;font-size:15px;">
-      Open source. Language agnostic. Team extensible.<br>
-      Works with any project that uses Claude Code.
+      Open source. Spring Boot focused. Team extensible.<br>
+      Works with any Java or Spring Boot project that uses Claude Code.
     </p>
     <div class="hero-cmd" style="animation:none;margin-bottom:16px;">
-      <span class="dim">/</span>plugin marketplace add ragaa07/claude-workflows
+      <span class="dim">/</span>plugin marketplace add chinaares/spring-boot-workflows
     </div>
     <p style="font-size:12px;color:var(--text-dim);margin-top:16px;">
-      <a href="https://github.com/ragaa07/claude-workflows" style="color:var(--accent);text-decoration:none;">GitHub</a>
-      &nbsp;&middot;&nbsp; MIT License &nbsp;&middot;&nbsp; v3.0.0
+      <a href="https://github.com/chinaares/spring-boot-workflows" style="color:var(--accent);text-decoration:none;">GitHub</a>
+      &nbsp;&middot;&nbsp; MIT License &nbsp;&middot;&nbsp; v1.0.0
     </p>
   </div>
 </section>

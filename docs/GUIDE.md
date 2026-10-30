@@ -1,8 +1,8 @@
-# Claude Workflows — Complete Guide
+# Spring Boot Workflows — Complete Guide
 
 ## Table of Contents
 
-1. [What Is Claude Workflows](#1-what-is-spring-boot-workflows)
+1. [What Is Spring Boot Workflows](#1-what-is-spring-boot-workflows)
 2. [Installation](#2-installation)
 3. [Configuration](#3-configuration)
 4. [The Workflow Lifecycle](#4-the-workflow-lifecycle)
@@ -20,13 +20,13 @@
 
 ---
 
-## 1. What Is Claude Workflows
+## 1. What Is Spring Boot Workflows
 
-A **portable, spec-driven development workflow system** for Claude Code AI agents, distributed as a **Claude Code plugin**. Structured, repeatable processes for building features, fixing bugs, refactoring, testing, and shipping releases.
+A **portable, spec-driven development workflow system** for Claude Code AI agents, distributed as a **Claude Code plugin** and specialized for Java/Spring projects. Structured, repeatable processes for building features, fixing bugs, refactoring, testing, and shipping releases.
 
-**Core Principles**: Spec before code. Brainstorm before plan. Plan before implement. State persists across sessions. Quality gate before every PR. Language-agnostic (build/test commands auto-detected). Configurable git flow.
+**Core Principles**: Spec before code. Brainstorm before plan. Plan before implement. State persists across sessions. Quality gate before every PR. Spring-aware (build/test commands and the Boot major version auto-detected). Configurable git flow.
 
-**What You Get**: 23 workflow skills (as plugin slash commands), 5 brainstorming techniques, orchestration rules enforced on every execution, review checklists (general + language-specific), coding rules per language, multi-session persistence, and a single YAML config file.
+**What You Get**: 23 workflow skills (as plugin slash commands), 27 vendored Spring Boot domain skills, 5 brainstorming techniques, 18 orchestration rules enforced on every execution, review checklists (general + Java + Spring Boot), Java/Spring coding rules, multi-session persistence, and a single YAML config file.
 
 ---
 
@@ -65,7 +65,7 @@ The setup skill:
 
 | Action | Result |
 |--------|--------|
-| Detects project stack | Scans for `build.gradle`, `package.json`, `go.mod`, etc. |
+| Detects project stack | Maven/Gradle (wrapper-first), Spring Boot major version (`3`/`4`), persistence stack (`jpa`/`jdbc`) |
 | Creates state directories | `.workflows/`, `.workflows/specs/`, `.workflows/history/`, `.workflows/learned/` |
 | Generates config | `.workflows/config.yml` (from plugin defaults + your userConfig) |
 | Updates `.gitignore` | Adds workflow state entries |
@@ -76,7 +76,7 @@ The setup skill:
 ls .workflows/
 cat .workflows/config.yml
 git add .workflows/config.yml .gitignore
-git commit -m "chore: initialize spring-boot-workflows v3.0.0"
+git commit -m "chore: initialize spring-boot-workflows v1.0.0"
 ```
 
 Then open Claude Code and run `/spring-boot-workflows:start`.
@@ -196,7 +196,7 @@ IDLE -> GATHER -> SPEC -> BRAINSTORM -> PLAN -> BRANCH -> IMPLEMENT -> TEST -> P
 
 **Skippable phases**: Set `require_spec/brainstorm/tests: false` in config or pass `--skip-brainstorm`.
 
-**Decision points**: After SPEC, BRAINSTORM, PLAN, UI implementation, and before PR. The workflow never proceeds without your approval.
+**Decision points**: After SPEC, BRAINSTORM, PLAN, and before PR. The workflow never proceeds without your approval (unless `--auto` is passed).
 
 **REPLAN**: Triggered when compilation fails 3+ times, plan is wrong, or you request a change. Stops, documents the issue, re-plans, and asks for approval.
 
@@ -204,7 +204,7 @@ IDLE -> GATHER -> SPEC -> BRAINSTORM -> PLAN -> BRANCH -> IMPLEMENT -> TEST -> P
 
 ## 5. Quality Gate
 
-Two mechanisms enforce code standards across all workflows. Both are **bundled in the plugin** and loaded dynamically based on `project.type` and `project.language`.
+Two mechanisms enforce code standards across all workflows. Both are **bundled in the plugin** and loaded dynamically based on `project.type` (the language is always Java in this plugin).
 
 ### Coding Rules (`<plugin-root>/rules/`)
 
@@ -266,12 +266,14 @@ All commands are namespaced under `spring-boot-workflows:`.
 The most comprehensive workflow. Takes a feature from idea to merged PR.
 
 ```
-/spring-boot-workflows:new-feature <name> [--from-ticket <url-or-id>] [--from-figma <url>] [--from-spec <path>] [--skip-brainstorm]
+/spring-boot-workflows:new-feature <name> [--from-ticket <url-or-id>] [--from-figma <url>] [--from-spec <path>] [--skip-brainstorm] [--depth full|trivial] [--auto]
 ```
 
-**GATHER**: Collects from Jira (MCP), Figma (MCP), spec file, or interactive questions. Multiple sources combinable. **SPEC**: Generates spec with user stories, acceptance criteria, scope, technical requirements, edge cases. **BRAINSTORM**: 2-4 approaches evaluated with structured techniques; produces decision document. **PLAN**: Phased implementation in `.workflows/<feature>/plan.md` with files, details, build checks, commit messages per phase. Also generates `tasks/todo.md`. **BRANCH**: Per git config. **IMPLEMENT**: Phase-by-phase with build checks, commits, and state updates. Coding rules loaded from `<plugin-root>/rules/`. REPLAN on repeated failures. **TEST**: Targets all new code, reports coverage. **PR**: Quality gate checklists run, then `gh pr create`.
+**GATHER**: Collects from Jira (MCP), Figma (MCP), spec file, or interactive questions. Multiple sources combinable. **SPEC**: Generates spec with user stories, acceptance criteria, scope, technical requirements, edge cases. **BRAINSTORM**: 2-4 approaches evaluated with structured techniques; produces decision document. **PLAN**: Phased implementation in `.workflows/<feature>/plan.md` with files, details, build checks, commit messages per phase. Also generates `tasks/todo.md`. **BRANCH**: Per git config. **IMPLEMENT**: Phase-by-phase with build checks, commits, and state updates. Java/Spring rules loaded from `<plugin-root>/rules/`, and the Spring domain skills routed by `spring-context`. REPLAN on repeated failures. **TEST**: Targets all new code, reports coverage. **PR**: Quality gate checklists run, then `gh pr create`.
 
-Decision points after SPEC, BRAINSTORM, PLAN, UI implementation, and before PR.
+`--depth trivial` skips SPEC, BRAINSTORM, and TEST; `--depth full` runs all eight phases without auto-skipping. `--auto` skips approval gates and uses the recommended option at each decision point.
+
+Decision points after SPEC, BRAINSTORM, PLAN, and before PR.
 
 ### Extend Feature
 
@@ -319,7 +321,7 @@ Fetches PR via `gh`, categorizes changes by layer, checks architecture/quality/s
 /spring-boot-workflows:release <version>
 ```
 
-Changelog from commits since last tag, version bump (language-agnostic detection), release branch, PR to production, tag command.
+Changelog from commits since last tag, version bump detected in `pom.xml` / `build.gradle(.kts)`, release branch, PR to production, tag command.
 
 ### CI Fix
 
@@ -340,10 +342,10 @@ Types: `dependency`, `api-version`, `architecture`, `database`. Each step compil
 ### New Project
 
 ```
-/spring-boot-workflows:new-project [--path <directory>] [--preset <android|web|rust|go|python>]
+/spring-boot-workflows:new-project [--path <directory>] [--preset <spring-boot|java>]
 ```
 
-Detects project type from build files, CI system, and git conventions. Generates `.workflows/config.yml` and directory structure.
+Detects build system, Spring Boot version, persistence stack, CI system, and git conventions. Generates `.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, and the directory structure. Supersedes `/setup` for new projects.
 
 ---
 
@@ -407,7 +409,7 @@ Three-layer persistence solves context loss between sessions:
 
 **`tasks/todo.md`**: Operational checklist generated from the plan, updated during implementation.
 
-**`tasks/lessons.md`**: Captures mistakes — what went wrong, correct pattern, prevention rule. Written on corrections, REPLAN triggers, failures. Read at session start and before each implementation phase.
+**`tasks/lessons.md`**: Created by `/new-project`. Captures mistakes — what went wrong, correct pattern, prevention rule — for you and Claude to consult before similar work.
 
 | File | What | Updated |
 |------|------|---------|
@@ -444,9 +446,11 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 |-------------------------------|---------|
 | `skills/*/SKILL.md` | 23 workflow skills (auto-discovered) |
 | `skills/_orchestration/RULES.md` | Global orchestration rules |
-| `templates/*.tmpl` | 4 document templates |
-| `rules/*.md` | Per-language coding rules (7 languages) |
-| `reviews/*.md` | Review checklists (7 language-specific + general) |
+| `templates/*.tmpl` | 6 templates (spec, plan, state, skill, changelog, guards.yml) |
+| `rules/*.md` | Java and Spring Boot coding rules |
+| `reviews/*.md` | General, Java, and Spring Boot review checklists |
+| `teams/*` | Team conventions (`spring`) and a `_template` for new teams |
+| `skills/spring-boot-3/`, `skills/spring-boot-4/` | 27 vendored Spring Boot domain skills |
 | `config/defaults.yml` | Default configuration |
 | `settings.json` | Plugin permissions |
 
@@ -455,15 +459,15 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 | Path | Git-tracked | Created By |
 |------|:-:|-----------|
 | `.workflows/config.yml` | Yes | `/spring-boot-workflows:setup` |
-| `.workflows/<feature>/NN-<phase>.md` | Yes | Each phase |
-| `.workflows/<feature>/plan.md` | Yes | PLAN phase |
+| `.workflows/<feature>/NN-<phase>.md` | No — `.workflows/*/` is gitignored | Each phase |
+| `.workflows/<feature>/plan.md` | No — `.workflows/*/` is gitignored | PLAN phase |
 | `.workflows/current-state.md` | No | Phase transitions |
 | `.workflows/paused-*.md` | No | Pause command |
 | `.workflows/history/` | No | Completion |
-| `.workflows/specs/` | Yes | SPEC phase |
+| `.workflows/specs/` | No | `/setup` (reserved directory) |
 | `.workflows/learned/` | No | Learning system |
-| `tasks/todo.md` | Yes | PLAN phase |
-| `tasks/lessons.md` | Yes | Corrections |
+| `tasks/todo.md` | Yes | `/new-project` or PLAN phase |
+| `tasks/lessons.md` | Yes | `/new-project` |
 
 ---
 
@@ -499,7 +503,7 @@ cat $(claude plugin path spring-boot-workflows)/VERSION
 | PR creation fails | Run `gh auth status` |
 | State corrupted | Delete `.workflows/current-state.md`, restart |
 | Quality gate not running | Check `quality.self_review: true` in `.workflows/config.yml` |
-| Wrong rules loaded | Check `project.language` in `.workflows/config.yml` |
+| Wrong rules loaded | Check `project.type` in `.workflows/config.yml` (`spring-boot` loads both rule files) |
 | Config missing | Run `/spring-boot-workflows:setup` to regenerate |
 
 ### Reset

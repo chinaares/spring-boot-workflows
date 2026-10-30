@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Boot Workflows —— 它做什么，以及为什么你需要它</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a26;
+    --border: #252535;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --accent5: #ff9f43;
+    --text: #e8e8f0;
+    --text-dim: #7a7a90;
+    --text-mid: #a0a0b8;
+    --glow: rgba(108, 99, 255, 0.25);
+    --glow2: rgba(0, 212, 170, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  code, .mono {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  /* ── BG ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  .bg-orb {
+    position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.12; z-index: 0;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+  .orb1 { width: 600px; height: 600px; background: var(--accent); top: -150px; left: -200px; }
+  .orb2 { width: 500px; height: 500px; background: var(--accent2); bottom: -100px; right: -150px; animation-delay: -8s; }
+  .orb3 { width: 350px; height: 350px; background: var(--accent5); top: 40%; left: 60%; animation-delay: -4s; }
+  @keyframes orbFloat {
+    0%,100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(40px,-40px) scale(1.08); }
+    66% { transform: translate(-30px,30px) scale(0.92); }
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  nav .logo { font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
+  nav .logo span { color: var(--accent); }
+  nav .links { display: flex; gap: 28px; }
+  nav .links a { color: var(--text-dim); text-decoration: none; font-size: 13px; transition: color 0.2s; }
+  nav .links a:hover { color: var(--text); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 120px 28px 80px;
+  }
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 16px; font-size: 12px; color: var(--accent2); margin-bottom: 28px;
+    animation: fadeUp .6s ease both;
+  }
+  .hero-pill .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.12;
+    margin-bottom: 20px; animation: fadeUp .6s ease .1s both;
+  }
+  .grad { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero .sub {
+    font-size: 18px; color: var(--text-mid); max-width: 620px; margin-bottom: 36px;
+    animation: fadeUp .6s ease .2s both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
+
+  .hero-cmd {
+    display: inline-block; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 28px; font-family: 'SF Mono',monospace;
+    font-size: 15px; color: var(--accent2); animation: fadeUp .6s ease .3s both;
+    transition: all .3s; cursor: default;
+  }
+  .hero-cmd:hover { border-color: var(--accent2); box-shadow: 0 0 30px var(--glow2); }
+  .hero-cmd .dim { color: var(--text-dim); }
+
+  /* ── SECTION ── */
+  section { padding: 90px 0; }
+  .sec-hdr { text-align: center; margin-bottom: 56px; }
+  .sec-hdr h2 { font-size: 2rem; margin-bottom: 10px; }
+  .sec-hdr p { color: var(--text-dim); font-size: 15px; max-width: 540px; margin: 0 auto; }
+  .sec-label {
+    display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent); margin-bottom: 12px; font-weight: 700;
+  }
+
+  /* ── PROBLEM/SOLUTION ── */
+  .problem-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;
+  }
+  .p-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; transition: all .3s;
+  }
+  .p-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .p-card .icon { font-size: 28px; margin-bottom: 14px; }
+  .p-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .p-card p { font-size: 13px; color: var(--text-dim); }
+  .p-card.problem { border-left: 3px solid var(--accent3); }
+  .p-card.solution { border-left: 3px solid var(--accent2); }
+
+  /* ── EXPLAINER BLOCKS ── */
+  .explainer {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+    padding: 48px 0;
+  }
+  .explainer.reverse { direction: rtl; }
+  .explainer.reverse > * { direction: ltr; }
+  .explainer-text h3 { font-size: 22px; margin-bottom: 12px; }
+  .explainer-text p { font-size: 14px; color: var(--text-mid); margin-bottom: 16px; }
+  .explainer-text ul { list-style: none; }
+  .explainer-text li {
+    font-size: 13px; color: var(--text-dim); padding: 5px 0;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .explainer-text li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+  .explainer-text .check li::before { background: var(--accent2); }
+  .explainer-text .dot li::before { background: var(--accent); }
+
+  .explainer-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; font-family: 'SF Mono',monospace; font-size: 12px; line-height: 1.8;
+  }
+  .ev-line { display: flex; gap: 12px; }
+  .ev-num { color: var(--text-dim); min-width: 20px; text-align: right; user-select: none; }
+  .ev-kw { color: var(--accent); }
+  .ev-str { color: var(--accent2); }
+  .ev-cmt { color: #555568; font-style: italic; }
+  .ev-flag { color: var(--accent4); }
+  .ev-val { color: var(--accent5); }
+
+  /* ── WORKFLOW SHOWCASE ── */
+  .wf-showcase {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+  }
+  .wf-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; transition: all .3s; position: relative; overflow: hidden;
+  }
+  .wf-item::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); opacity: 0; transition: opacity .3s;
+  }
+  .wf-item:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .wf-item:hover::after { opacity: 1; }
+  .wf-item .emoji { font-size: 24px; margin-bottom: 12px; }
+  .wf-item h4 { font-size: 15px; margin-bottom: 6px; }
+  .wf-item .desc { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+  .wf-item .what {
+    font-size: 12px; color: var(--text-mid); line-height: 1.7;
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px;
+  }
+  .wf-item .cmd { font-family: monospace; font-size: 11px; color: var(--accent); margin-top: 8px; }
+  .wf-tag {
+    display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-top: 8px;
+  }
+  .wf-tag.new { background: rgba(0,212,170,.12); color: var(--accent2); }
+
+  /* ── USAGE GUIDE ── */
+  .usage-steps { counter-reset: usage-step; max-width: 800px; margin: 0 auto; }
+  .usage-step {
+    counter-increment: usage-step;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px 28px 28px 72px; margin-bottom: 16px; position: relative; transition: all .3s;
+  }
+  .usage-step:hover { border-color: var(--accent); transform: translateX(4px); }
+  .usage-step::before {
+    content: counter(usage-step);
+    position: absolute; left: 24px; top: 26px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .usage-step h4 { font-size: 16px; margin-bottom: 8px; }
+  .usage-step p { font-size: 13px; color: var(--text-mid); margin-bottom: 8px; }
+  .usage-step code { background: var(--surface2); padding: 2px 8px; border-radius: 4px; font-size: 12px; color: var(--accent2); }
+  .usage-step .cmd-block {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; margin-top: 10px; font-family: 'SF Mono',monospace; font-size: 12px;
+    color: var(--accent2); line-height: 1.8;
+  }
+  .usage-step .cmd-block .cmt { color: #555568; }
+  .usage-step .expect {
+    margin-top: 12px; padding: 12px 16px;
+    background: rgba(108,99,255,0.06); border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text-mid);
+  }
+  .usage-step .expect strong { color: var(--accent); }
+  .usage-tips {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    max-width: 800px; margin: 32px auto 0;
+  }
+  .usage-tip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; font-size: 13px;
+  }
+  .usage-tip h5 { font-size: 13px; color: var(--accent2); margin-bottom: 6px; }
+  .usage-tip p { color: var(--text-dim); font-size: 12px; }
+  @media (max-width: 768px) { .usage-tips { grid-template-columns: 1fr; } }
+
+  /* ── HOW IT GIVES ── */
+  .gives-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+  }
+  .gives-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; text-align: center; transition: all .3s;
+  }
+  .gives-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .gives-card .big { font-size: 2.5rem; font-weight: 800; margin-bottom: 4px; }
+  .gives-card .label { font-size: 12px; color: var(--text-dim); }
+
+  /* ── FLOW ── */
+  .flow-visual {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 32px; margin: 24px auto; max-width: 900px; overflow-x: auto;
+  }
+  .flow-row {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .flow-row:last-child { margin-bottom: 0; }
+  .fn {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; font-family: monospace;
+    transition: all .3s; cursor: default; white-space: nowrap;
+  }
+  .fn:hover { border-color: var(--accent); box-shadow: 0 0 16px var(--glow); transform: translateY(-2px); }
+  .fn.green { color: var(--accent2); border-color: rgba(0,212,170,.3); }
+  .fn.purple { color: var(--accent); border-color: rgba(108,99,255,.3); }
+  .fn.yellow { color: var(--accent4); border-color: rgba(255,217,61,.3); }
+  .fn.orange { color: var(--accent5); border-color: rgba(255,159,67,.3); }
+  .fa { color: var(--text-dim); font-size: 14px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 40px; font-size: 12px; color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── REVEAL ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: all .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .problem-grid, .explainer { grid-template-columns: 1fr; }
+    .explainer.reverse { direction: ltr; }
+    nav .links { display: none; }
+    .gives-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo"><span>claude</span>-workflows</div>
+  <div class="links">
+    <a href="#problem">问题所在</a>
+    <a href="#what">它做什么</a>
+    <a href="#workflows">工作流</a>
+    <a href="#features">特性</a>
+    <a href="#usage">使用指南</a>
+    <a href="#gives">你将获得</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════ HERO ════════════════════════════ -->
+<header class="hero">
+  <div class="hero-pill"><span class="pulse"></span> 开源 &middot; MIT 许可证</div>
+  <h1>别再一味写提示词。<br>开始<span class="grad">编排。</span></h1>
+  <p class="sub">
+    Spring Boot Workflows 把 Claude Code 从一个被动的聊天助手，变成一位结构化的工程伙伴：
+    它会遵循规格、与你一起头脑风暴、逐阶段编写代码、运行质量门禁并创建 PR
+    &mdash;&mdash; 而且横跨多个会话，全程不丢失上下文。
+  </p>
+  <div class="hero-cmd">
+    <span class="dim">/</span>plugin install <span class="ev-str">spring-boot-workflows</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════ THE PROBLEM ════════════════════════════ -->
+<section id="problem" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">问题所在</span>
+    <h2>Claude Code 很强大，但缺乏结构</h2>
+    <p>没有工作流时，每次对话都要从零开始。Claude 不记得你的流程、你的约定，也不记得你上次做到哪儿了。</p>
+  </div>
+
+  <div class="problem-grid reveal">
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>流程没有记忆</h3>
+      <p>每一个会话你都要反复解释同样的架构决策、编码约定和 git 流程。上下文一重置，Claude 就把一切都忘了。</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>持久化的工作流状态</h3>
+      <p>Spring Boot Workflows 把决策存进 YAML 状态文件和上下文快照。几天之后恢复任何工作流，上下文依然完整。</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>质量忽高忽低</h3>
+      <p>有时 Claude 写的代码很棒，有时它会跳过测试、无视约定，或者不做评审就创建 PR。毫无保证。</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>每个边界都有质量门禁</h3>
+      <p>每个 PR 之前强制运行评审清单。实现之前加载语言专用的编码规则。只对实际改动的文件做聚焦检查。</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>复杂任务没有章法</h3>
+      <p>要开发一个功能？Claude 直接跳去写代码。没有规格、没有计划、没有备选方案的头脑风暴。你得到的只是它想到的第一种做法。</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>分阶段执行，逐段确认</h3>
+      <p>收集需求 &rarr; 编写规格 &rarr; 头脑风暴方案 &rarr; 制定计划 &rarr; 实现 &rarr; 测试 &rarr; 评审 &rarr; PR。每个阶段都需要你批准。</p>
+    </div>
+    <div class="p-card problem">
+      <div class="icon">&#128165;</div>
+      <h3>所有任务一视同仁</h3>
+      <p>改 3 行配置和开发一个大型功能得到同样的对待：「这是代码。」完全不区分复杂度与风险等级。</p>
+    </div>
+    <div class="p-card solution">
+      <div class="icon">&#128161;</div>
+      <h3>23 个专用工作流</h3>
+      <p>紧急修复快速而克制，新功能严谨而完整，重构有行为契约兜底。每个工作流都为它的任务量身打造。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WHAT IT DOES ════════════════════════════ -->
+<section id="what" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">它做什么</span>
+    <h2>一个面向 Claude Code 的工作流引擎</h2>
+    <p>它把结构化的技能、规则与清单装进你的项目，引导 Claude 以有纪律的方式做 Java 与 Spring Boot 开发</p>
+  </div>
+
+  <!-- Explainer 1: Skills -->
+  <div class="explainer reveal">
+    <div class="explainer-text">
+      <h3>技能（Skills）：一步一步的指令</h3>
+      <p>
+        每个工作流都是一个<strong>技能</strong> &mdash;&mdash; 一个 markdown 文件，里面是 Claude 要遵循的、
+        逐阶段的详细指令。当你输入 <code>/spring-boot-workflows:new-feature</code> 时，Claude 会读取该技能，
+        按顺序执行每个阶段，同时写出产出文档并更新状态。
+      </p>
+      <ul class="check">
+        <li>23 个技能，覆盖完整的开发生命周期</li>
+        <li>27 个 Spring Boot 领域技能（JPA、REST、安全、Flyway、测试），由 spring-context 路由按需加载</li>
+        <li>每个技能含 3-8 个阶段，并设有审批门</li>
+        <li>阶段产物以 markdown 持久化，便于恢复上下文</li>
+        <li>技能可组合 &mdash;&mdash; new-feature 会委派给 brainstorm</li>
+        <li>可用 /spring-boot-workflows:compose-skill 创建你自己的技能</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num">1</span><span class="ev-cmt"># 你输入：</span></div>
+      <div class="ev-line"><span class="ev-num">2</span><span class="ev-kw">/spring-boot-workflows:new-feature</span> <span class="ev-str">user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num">3</span></div>
+      <div class="ev-line"><span class="ev-num">4</span><span class="ev-cmt"># Claude 依次执行 8 个阶段：</span></div>
+      <div class="ev-line"><span class="ev-num">5</span><span class="ev-val">阶段 1: GATHER</span> <span class="ev-cmt">— 收集需求</span></div>
+      <div class="ev-line"><span class="ev-num">6</span><span class="ev-val">阶段 2: SPEC</span> <span class="ev-cmt">— 编写正式规格</span></div>
+      <div class="ev-line"><span class="ev-num">7</span><span class="ev-val">阶段 3: BRAINSTORM</span> <span class="ev-cmt">— 与你一起探索方案</span></div>
+      <div class="ev-line"><span class="ev-num">8</span><span class="ev-val">阶段 4: PLAN</span> <span class="ev-cmt">— 制定分阶段实现计划</span></div>
+      <div class="ev-line"><span class="ev-num">9</span><span class="ev-val">阶段 5: BRANCH</span> <span class="ev-cmt">— 创建 git 分支</span></div>
+      <div class="ev-line"><span class="ev-num">10</span><span class="ev-val">阶段 6: IMPLEMENT</span> <span class="ev-cmt">— 逐阶段实现</span></div>
+      <div class="ev-line"><span class="ev-num">11</span><span class="ev-val">阶段 7: TEST</span> <span class="ev-cmt">— 验证正确性</span></div>
+      <div class="ev-line"><span class="ev-num">12</span><span class="ev-flag">质量门禁</span> <span class="ev-cmt">— 检查 37 项通用 + 45 项 Spring 条目</span></div>
+      <div class="ev-line"><span class="ev-num">13</span><span class="ev-val">阶段 8: PR</span> <span class="ev-cmt">— 推送并创建拉取请求</span></div>
+    </div>
+  </div>
+
+  <!-- Explainer 2: Rules -->
+  <div class="explainer reverse reveal">
+    <div class="explainer-text">
+      <h3>规则（Rules）：编码自动巡航</h3>
+      <p>
+        两份 <strong>DO/DON'T 规则文件</strong>会在 Claude 写任何 Java 代码之前加载：
+        <code>rules/java.md</code> 管语言，<code>rules/spring-boot.md</code> 管框架。
+        这些不是建议，而是指令。「Boot 4 里永远别用 <code>@MockBean</code>。」
+        「永远别用字段注入。」Claude 会自动遵守，无需你反复交代。
+      </p>
+      <ul class="check">
+        <li>2 份规则文件：<code>java.md</code> 与 <code>spring-boot.md</code></li>
+        <li>依据 <code>project.type</code> 自动加载 &mdash;&mdash; spring-boot 会同时加载两份</li>
+        <li>团队约定叠加在语言规则之上</li>
+        <li>Boot 3 与 Boot 4 的差异靠检测得出，绝不猜测</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># 插件内置 rules/java.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## record 与 class</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO：</span> 用 record 表示 <span class="ev-val">DTO</span>、请求/响应载荷、值对象</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T：</span> 用 record 表示需要变更的 <span class="ev-val">JPA 实体</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## 空安全</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO：</span> 在 <span class="ev-val">package-info.java</span> 中用 <span class="ev-val">@NullMarked</span>（JSpecify）</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T：</span> 给每个参数都显式标注非空</div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## 异常</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">DO：</span> 包装异常时保留原始 cause</div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">DON'T：</span> 捕获 <span class="ev-val">Exception</span> 后返回 null</div>
+    </div>
+  </div>
+
+  <!-- Explainer 3: Review Checklists -->
+  <div class="explainer reveal">
+    <div class="explainer-text">
+      <h3>评审清单（Review Checklists）：可信赖的质量</h3>
+      <p>
+        每个 PR 之前，Claude 会对照按严重级别划分的清单做一次<strong>自评审</strong>。
+        严重级别的条目（硬编码密钥、SQL 注入、缺失鉴权）<em>必须</em>通过。
+        聚焦门禁只会检查与真正改动过的文件相关的条目。
+      </p>
+      <ul class="check">
+        <li>通用清单 37 项（架构、安全、性能、测试）</li>
+        <li>Java 清单额外 44 项，Spring Boot 清单额外 45 项</li>
+        <li>严重级别：Critical 阻止合并，High 应当修复，Medium/Low 为提示性建议</li>
+        <li>团队清单用于领域特定标准</li>
+        <li>聚焦门禁：安全相关文件跑全部安全检查，UI 文件跑 XSS 检查</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># PR 前的质量门禁</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[严重]</span> 无硬编码密钥 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[严重]</span> 输入校验 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-flag">[严重]</span> SQL 注入防护 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[高]</span>&nbsp;&nbsp;&nbsp;&nbsp; 遵循项目既有模式 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[高]</span>&nbsp;&nbsp;&nbsp;&nbsp; 所有错误均已处理 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">[高]</span>&nbsp;&nbsp;&nbsp;&nbsp; 存在对应测试 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-val">[中]</span>&nbsp;&nbsp; 无 N+1 查询 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-val">[中]</span>&nbsp;&nbsp; 函数长度 &lt;40 行 <span class="ev-str">PASS</span></div>
+      <div class="ev-line"><span class="ev-num"></span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-str">结果：全部通过 &mdash;&mdash; 正在创建 PR</span></div>
+    </div>
+  </div>
+
+  <!-- Explainer 4: State Persistence -->
+  <div class="explainer reverse reveal">
+    <div class="explainer-text">
+      <h3>状态（State）：永远不会找不到进度</h3>
+      <p>
+        Spring Boot Workflows 采用<strong>三层持久化模型</strong>，因此你可以随时关掉终端，
+        第二天回来，从上次的位置精确继续。状态文件使用 YAML frontmatter
+        以便可靠解析。上下文快照在每次阶段边界记录关键决策。
+      </p>
+      <ul class="dot">
+        <li><strong>第 1 层：状态文件</strong> &mdash;&mdash; 当前阶段、分支、重试次数、阶段历史</li>
+        <li><strong>第 2 层：阶段产物 + Context 小节</strong> &mdash;&mdash; 每个阶段的完整细节，关键决策写入状态文件</li>
+        <li><strong>第 3 层：Git + 知识图谱</strong> &mdash;&mdash; 提交、分支，以及跨工作流的决策学习</li>
+      </ul>
+    </div>
+    <div class="explainer-visual">
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-cmt"># .workflows/current-state.md</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">---</span></div>
+      <div class="ev-line"><span class="ev-num"></span>workflow: <span class="ev-str">new-feature</span></div>
+      <div class="ev-line"><span class="ev-num"></span>feature: <span class="ev-str">user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num"></span>phase: <span class="ev-val">IMPLEMENT</span></div>
+      <div class="ev-line"><span class="ev-num"></span>branch: <span class="ev-str">feature/user-authentication</span></div>
+      <div class="ev-line"><span class="ev-num"></span>retry_count: <span class="ev-val">0</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">---</span></div>
+      <div class="ev-line"><span class="ev-num"></span><span class="ev-kw">## 阶段历史</span></div>
+      <div class="ev-line"><span class="ev-num"></span>GATHER&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 01-gather.md</div>
+      <div class="ev-line"><span class="ev-num"></span>SPEC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 02-spec.md</div>
+      <div class="ev-line"><span class="ev-num"></span>BRAINSTORM <span class="ev-str">COMPLETED</span> 03-brainstorm.md</div>
+      <div class="ev-line"><span class="ev-num"></span>PLAN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="ev-str">COMPLETED</span> 04-plan.md</div>
+      <div class="ev-line"><span class="ev-num"></span>IMPLEMENT&nbsp; <span class="ev-val">ACTIVE</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WORKFLOW PHASES VISUAL ════════════════════════════ -->
+<section class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">阶段如何流转</span>
+    <h2>每个工作流都是一台状态机</h2>
+    <p>各阶段顺序执行，并在边界处做质量检查。错误恢复机制内建其中。</p>
+  </div>
+
+  <div class="flow-visual reveal">
+    <div class="flow-row">
+      <span class="fn green">/spring-boot-workflows:start</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">GATHER</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">SPEC</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">BRAINSTORM</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn purple">PLAN</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn orange">BRANCH</span>
+    </div>
+    <div class="flow-row">
+      <span class="fn orange">IMPLEMENT</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn orange">TEST</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn yellow">质量门禁</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn green">PR</span>
+      <span class="fa">&rarr;</span>
+      <span class="fn green">CHAIN &rarr; 下一步</span>
+    </div>
+    <div style="display:flex;justify-content:center;gap:32px;margin-top:20px;font-size:11px;color:var(--text-dim);">
+      <span><span style="color:var(--accent);">&#9632;</span> 思考与决策</span>
+      <span><span style="color:var(--accent5);">&#9632;</span> 构建与验证</span>
+      <span><span style="color:var(--accent4);">&#9632;</span> 质量门禁</span>
+      <span><span style="color:var(--accent2);">&#9632;</span> 交付与串联</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ ALL WORKFLOWS ════════════════════════════ -->
+<section id="workflows" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">23 个工作流技能</span>
+    <h2>为每种任务提供恰当的流程</h2>
+    <p>为各种开发场景量身打造的工作流，从紧急热修复到完整的功能开发</p>
+  </div>
+
+  <div class="wf-showcase reveal">
+    <div class="wf-item">
+      <div class="emoji">&#9881;&#65039;</div>
+      <h4>新功能（New Feature）</h4>
+      <div class="desc">从需求到 PR 合并的完整功能生命周期</div>
+      <div class="what"><strong>它做什么：</strong>收集需求（来自 Jira、Figma，或交互式提问），编写正式规格，与你一起头脑风暴实现方案，制定按架构分层排序的分阶段计划，逐个提交地实现并做构建检查，运行测试，通过质量门禁之后创建 PR。</div>
+      <div class="cmd">/spring-boot-workflows:new-feature &lt;name&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128293;</div>
+      <h4>紧急修复（Hotfix）</h4>
+      <div class="desc">生产环境紧急修复，为速度而优化</div>
+      <div class="what"><strong>它做什么：</strong>从堆栈跟踪、Crashlytics 或日志文件出发诊断崩溃，定位根因，施加绝对最小的修复（理想 1-5 行，超过 15 行会警告），编写一个在没有该修复时必然失败的强制回归测试，向生产分支提 PR，并给出回移到开发分支的 cherry-pick 方案。</div>
+      <div class="cmd">/spring-boot-workflows:hotfix &lt;description&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128260;</div>
+      <h4>重构（Refactor）</h4>
+      <div class="desc">带行为保证的代码重组</div>
+      <div class="what"><strong>它做什么：</strong>绘制完整依赖图（入向 + 出向）。在动代码之前先记录行为契约。规划增量迁移，保证每一步都能编译并通过测试。采用并行弃用策略：新代码与旧代码并存，逐个迁移调用方，直到引用归零才删除旧代码。</div>
+      <div class="cmd">/spring-boot-workflows:refactor &lt;target&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128270;</div>
+      <h4>代码评审（Code Review）</h4>
+      <div class="desc">带行内评论的系统化 PR 评审</div>
+      <div class="what"><strong>它做什么：</strong>拉取 PR diff，按架构分层对文件分类，完整阅读每个改动文件（而不只是 diff）。对照已加载的清单检查，用 4 个严重级别：Critical（阻断）、High、Medium、Low。生成带可执行修复建议的行内评论，并通过 GitHub API 提交。</div>
+      <div class="cmd">/spring-boot-workflows:review &lt;pr-number&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128161;</div>
+      <h4>头脑风暴（Brainstorm）</h4>
+      <div class="desc">用结构化技法进行的交互式设计探索</div>
+      <div class="what"><strong>它做什么：</strong>主导一场协作式对话（绝不单方面分析）。使用的技法包括：权衡矩阵、六顶思考帽、SCAMPER、逆向头脑风暴、约束映射。按复杂度分三个深度级别。按加权维度为选项打分。从知识图谱中调出相关的历史决策。你来决定 &mdash;&mdash; Claude 负责引导。</div>
+      <div class="cmd">/spring-boot-workflows:brainstorm --topic "..."</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#129514;</div>
+      <h4>测试生成（Test Generation）</h4>
+      <div class="desc">覆盖率分析、分支映射、分类测试</div>
+      <div class="what"><strong>它做什么：</strong>分析目标的公开 API，映射每一条代码分支（正常、错误、边界、状态、并发）。规划带标签的测试：[HAPPY] [ERROR] [EDGE] [STATE] [INTEGRATION]。按 Given/When/Then 命名编写测试。对照可配置的目标覆盖率检查（默认 90%）。报告缺口并说明原因。</div>
+      <div class="cmd">/spring-boot-workflows:test &lt;target&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128296;</div>
+      <h4>扩展功能（Extend Feature）</h4>
+      <div class="desc">在不破坏既有行为的前提下增加能力</div>
+      <div class="what"><strong>它做什么：</strong>分析既有功能的代码，找出可以在不修改既有代码的情况下挂接新行为的扩展点。优先新增文件而非修改。保证：不改签名、不改测试断言、不改变行为。运行完整的兼容性验证。</div>
+      <div class="cmd">/spring-boot-workflows:extend-feature &lt;name&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#9889;</div>
+      <h4>CI 修复（CI Fix）</h4>
+      <div class="desc">自动诊断并修复失败的 CI/CD 流水线</div>
+      <div class="what"><strong>它做什么：</strong>通过 <code>gh</code> CLI 获取 CI 失败日志。分类：编译错误、测试失败、lint 违规、依赖问题、配置错误、超时，或不稳定的测试。按类别施加针对性修复。推送并监控重试结果。如果再次失败，最多循环 3 次，每轮重新诊断。</div>
+      <div class="cmd">/spring-boot-workflows:ci-fix</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128674;</div>
+      <h4>迁移（Migrate）</h4>
+      <div class="desc">依赖、API、架构、数据库</div>
+      <div class="what"><strong>它做什么：</strong>任何改动之前先记录当前状态。评估迁移策略（一次性切换、增量、并行运行、绞杀者模式）。制定计划，确保每一步都能独立编译并通过测试。提供类型专属指导：依赖版本升级、API 版本替换、架构模式迁移、带可回滚迁移的数据库 schema 变更。</div>
+      <div class="cmd">/spring-boot-workflows:migrate &lt;type&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128640;</div>
+      <h4>发布（Release）</h4>
+      <div class="desc">变更日志、版本递增、分支、PR、标签</div>
+      <div class="what"><strong>它做什么：</strong>从 git 历史生成变更日志，并按 conventional commit 类型分类。在正确的文件里检测并递增版本号（pom.xml、build.gradle、build.gradle.kts）。创建发布分支、带质量门禁地提 PR 到生产分支，并提供合并后的打标签命令。</div>
+      <div class="cmd">/spring-boot-workflows:release &lt;version&gt;</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#127968;</div>
+      <h4>新项目（New Project）</h4>
+      <div class="desc">为项目初始化完整的 Claude Code 配置</div>
+      <div class="what"><strong>它做什么：</strong>扫描 Maven/Gradle 构建文件，检测 Spring Boot 主版本与持久化技术栈，再从历史中提取 git 约定。生成 .workflows/config.yml 和 CLAUDE.md，内含构建命令、架构摘要与代码约定。搭好任务跟踪的脚手架。</div>
+      <div class="cmd">/spring-boot-workflows:new-project</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128195;</div>
+      <h4>模板（Templates）</h4>
+      <div class="desc">复用过去工作流中的规格与计划</div>
+      <div class="what"><strong>它做什么：</strong>把已完成工作流的规格 + 计划保存为可复用模板，支持参数占位符。下次要构建类似功能时，<code>/spring-boot-workflows:template use api-endpoint user-mgmt</code> 会预填规格与计划，完全跳过 GATHER 和 SPEC 阶段。模板会记录使用次数。</div>
+      <div class="cmd">/spring-boot-workflows:template save|list|use</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128295;</div>
+      <h4>技能编排（Skill Composer）</h4>
+      <div class="desc">以交互方式构建自定义工作流技能</div>
+      <div class="what"><strong>它做什么：</strong>询问这个技能做什么、有哪些阶段、每个阶段产出什么、是否需要头脑风暴、是否会创建 PR。生成一个结构规范的 SKILL.md，包含 YAML frontmatter、编排集成、阶段输出路径与错误处理。阶段相关的具体逻辑由你填充。</div>
+      <div class="cmd">/spring-boot-workflows:compose-skill &lt;name&gt;</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128202;</div>
+      <h4>度量（Metrics）</h4>
+      <div class="desc">跟踪工作流速度、瓶颈与趋势</div>
+      <div class="what"><strong>它做什么：</strong>读取遥测数据（每个阶段之后写入的 JSON lines）。展示完成率、平均耗时、瓶颈阶段，以及按工作流的细分统计。<code>/metrics trends</code> 会把最近 10 个工作流与此前 10 个做对比，查看速度变化与 REPLAN 频率。</div>
+      <div class="cmd">/spring-boot-workflows:metrics [trends]</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128268;</div>
+      <h4>Git Flow</h4>
+      <div class="desc">按项目约定进行分支、提交、PR、合并操作</div>
+      <div class="what"><strong>它做什么：</strong>按配置的模式创建分支（feature/{name}、hotfix/{name}）。按你的格式校验提交信息（conventional、angular、simple）。按配置的基分支、评审人、标签与草稿模式创建 PR。按配置的策略合并（squash/merge/rebase）。对受保护分支发出警告。</div>
+      <div class="cmd">/spring-boot-workflows:git-flow branch|commit|pr|merge</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128218;</div>
+      <h4>学习（Learn）</h4>
+      <div class="desc">捕获并复用成功的模式</div>
+      <div class="what"><strong>它做什么：</strong>从已完成的工作流中提取可复用模式：架构决策、实现模式、测试策略、问题解决方式。以带标签的 markdown 存储。被使用 2 次以上的模式会被标记为「已验证」，并在未来的头脑风暴中自动浮现。</div>
+      <div class="cmd">/spring-boot-workflows:learn capture|list|apply</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128269;</div>
+      <h4>诊断（Diagnose）</h4>
+      <div class="desc">以假设验证进行系统化的缺陷排查</div>
+      <div class="what"><strong>它做什么：</strong>复现缺陷，生成带证据的排序假设，然后用针对性测试或 <code>git bisect</code> 逐一排除。记录确认的根因，给出确切的文件、行号与影响范围 &mdash;&mdash; 但不做修复。随后交由 <code>/hotfix</code> 或 <code>/new-feature</code> 去修复。</div>
+      <div class="cmd">/spring-boot-workflows:diagnose &lt;symptom&gt;</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128207;</div>
+      <h4>范围评估（Scope）</h4>
+      <div class="desc">动手之前先做复杂度预判</div>
+      <div class="what"><strong>它做什么：</strong>扫描代码库找出受影响的文件，统计涉及的分层数量，检查是否存在破坏性变更。给出复杂度评级：Trivial（微不足道）、Small（小）、Medium（中）、Large（大）、Epic（史诗级）。推荐应使用哪个工作流，并为超大型任务给出具体的拆分建议与依赖顺序。</div>
+      <div class="cmd">/spring-boot-workflows:scope &lt;description&gt;</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128200;</div>
+      <h4>复盘（Retrospective）</h4>
+      <div class="desc">分析工作流历史以改进流程</div>
+      <div class="what"><strong>它做什么：</strong>读取遥测与工作流历史，找出做得好的地方（成功率高的流程）、问题（反复出现的 REPLAN 触发）与瓶颈（总是出岔子的阶段）。生成可执行的改进建议，并给出具体的配置改动。可自动应用已批准的配置更新。</div>
+      <div class="cmd">/spring-boot-workflows:retrospective</div>
+      <span class="wf-tag new">新</span>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128737;&#65039;</div>
+      <h4>守卫（Guards）</h4>
+      <div class="desc">针对凭据与危险操作的安全检查</div>
+      <div class="what"><strong>它做什么：</strong>用 guards.yml 中可配置的阻断/警告模式扫描暂存文件。检测硬编码令牌（AKIA、sk-、ghp_、Bearer）、受保护路径违规，以及危险操作（rm -rf）。BLOCK 级别会直接阻止操作，WARN 级别只提示但允许通过。越权放行会留痕，便于审计。</div>
+      <div class="cmd">/spring-boot-workflows:guards init|check|report</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ KEY FEATURES ════════════════════════════ -->
+<section id="features" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">强力特性</span>
+    <h2>它与众不同的地方</h2>
+    <p>不只是提示词 &mdash;&mdash; 而是一套内建智能的完整编排引擎</p>
+  </div>
+
+  <div class="wf-showcase reveal">
+    <div class="wf-item">
+      <h4>&#128279; 工作流串联</h4>
+      <div class="what">在 YAML 中配置工作流的自动接续。当 <code>/spring-boot-workflows:new-feature</code> 完成后，Claude 会建议 <code>/spring-boot-workflows:review --self</code>；热修复完成后，建议 <code>/spring-boot-workflows:ci-fix</code>。相关流程之间零手工交接。</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#128248; 上下文快照</h4>
+      <div class="what">每个阶段之后，关键决策会追加到状态文件的 Context 小节（3-5 条要点）。当 Claude 的上下文窗口在长工作流中压缩旧消息时，它会重新加载 Context 小节，恢复此前的全部推理。「我都忘了阶段 2 我们决定了什么」这种事不会再发生。</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#9889; 自适应深度</h4>
+      <div class="what">自动感知任务复杂度。改两个文件的配置跳过 SPEC 和 BRAINSTORM（微不足道）；涉及 15 个文件的架构级改动则强制进行多种技法的深度头脑风暴（复杂）。可用 <code>--depth full</code> 覆盖。每个任务都得到恰到好处的流程。</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#129504; 知识图谱</h4>
+      <div class="what">每次工作流结束后，决策会被提取到 <code>knowledge.jsonl</code>。在未来的头脑风暴中，Claude 会主动提示：「上次你遇到类似的约束（离线优先），选择了事件溯源 &mdash;&mdash; 它成功了。」团队的集体记忆，被编码下来。</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#9879; 并行执行提示</h4>
+      <div class="what">各阶段内相互独立的子步骤会被标记为可并行执行。Review 的 FETCH 阶段会并发发起 4 个 API 调用，而不是串行。正确性不变，完成更快。</div>
+    </div>
+    <div class="wf-item">
+      <h4>&#128736; 18 条编排规则</h4>
+      <div class="what">适用于每个工作流的通用规则：状态初始化、阶段产物、跳过逻辑、质量门禁、构建检测、完成、暂停、错误恢复（REPLAN）、技能组合、检查点、遥测、试运行、串联、知识提取。这是驱动每个技能背后的引擎。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ USAGE GUIDE ════════════════════════════ -->
+<section id="usage" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">使用指南</span>
+    <h2>如何使用这个插件</h2>
+    <p>从安装到完成第一个功能 &mdash;&mdash; 以下是你将会经历的确切过程</p>
+  </div>
+
+  <div class="usage-steps reveal">
+    <div class="usage-step">
+      <h4>安装插件</h4>
+      <p>在 Claude Code 内运行以下命令。它会下载插件，并提示你配置 5 个选项。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 在 Claude Code 内</span><br>
+        /plugin marketplace add chinaares/spring-boot-workflows<br>
+        /plugin install spring-boot-workflows<br>
+        <br>
+        <span class="cmt"># 你会被问到：</span><br>
+        <span class="cmt"># - 项目类型（spring-boot, java, generic）</span><br>
+        <span class="cmt"># - 团队（spring 或 none）</span><br>
+        <span class="cmt"># - 主分支名（默认：main）</span><br>
+        <span class="cmt"># - 开发分支名（默认：develop）</span><br>
+        <span class="cmt"># - 提交格式（conventional, angular, simple）</span>
+      </div>
+      <div class="expect"><strong>会发生什么：</strong>插件的技能、规则与清单会在该项目内的每一次 Claude Code 会话中，以 <code>/spring-boot-workflows:*</code> 命令的形式提供。</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>初始化你的项目</h4>
+      <p>运行 setup，检测项目的技术栈并创建 <code>.workflows/</code> 目录结构。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 在 Claude Code 内</span><br>
+        /spring-boot-workflows:setup<br>
+        <br>
+        <span class="cmt"># 或者针对新项目（执行 setup 并生成 CLAUDE.md）：</span><br>
+        /spring-boot-workflows:new-project
+      </div>
+      <div class="expect"><strong>会发生什么：</strong>生成 <code>.workflows/config.yml</code>，其中填入检测到的项目设置（构建系统、语言、git 约定）。同时创建用于工作流状态的历史与学习目录。生成之后你可以自行定制 <code>config.yml</code>。</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>启动你的第一个工作流</h4>
+      <p>用 <code>/start</code> 浏览全部可用工作流，或直接跳到某一个。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 浏览可用工作流</span><br>
+        /spring-boot-workflows:start<br>
+        <br>
+        <span class="cmt"># 或直接进入某个工作流</span><br>
+        /spring-boot-workflows:new-feature user-authentication<br>
+        /spring-boot-workflows:hotfix null-crash-login<br>
+        /spring-boot-workflows:review 42<br>
+        /spring-boot-workflows:brainstorm --topic "caching strategy"
+      </div>
+      <div class="expect"><strong>会发生什么：</strong>Claude 会在 <code>.workflows/current-state.md</code> 创建状态文件，显示进度指示，并开始第一个阶段。对 <code>/new-feature</code> 而言，它会以交互式收集需求开始。</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>逐个阶段推进</h4>
+      <p>Claude 按顺序执行各阶段。有些阶段在继续之前会请求你的批准，另一些则自动推进。</p>
+      <div class="cmd-block">
+        <span class="cmt"># new-feature 工作流中的典型交互：</span><br>
+        <br>
+        <span class="cmt"># GATHER：Claude 向你提问，了解功能需求</span><br>
+        <span class="cmt"># SPEC：Claude 写出规格，问「是否批准？」</span><br>
+        <span class="cmt"># BRAINSTORM：来回交互式地探索各种方案</span><br>
+        <span class="cmt"># PLAN：Claude 制定实现计划，问「是否批准？」</span><br>
+        <span class="cmt"># BRANCH：自动创建 git 分支</span><br>
+        <span class="cmt"># IMPLEMENT：逐阶段实现，并做构建检查</span><br>
+        <span class="cmt"># TEST：运行测试，报告覆盖率</span><br>
+        <span class="cmt"># PR：运行质量门禁，创建拉取请求</span>
+      </div>
+      <div class="expect"><strong>你应该期待：</strong>每个阶段之后，Claude 会写出一个产物文件（例如 <code>01-gather.md</code>）并更新状态。一行进度提示会告诉你所处的阶段：<code>&#10003;GATHER &#10003;SPEC &#9655;BRAINSTORM &#183;PLAN &#183;IMPLEMENT &#183;TEST &#183;PR</code></div>
+    </div>
+
+    <div class="usage-step">
+      <h4>暂停、恢复与恢复现场</h4>
+      <p>你可以随时暂停，之后再恢复 &mdash;&mdash; 哪怕是几天后的新会话。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 暂停当前工作流（随时说 "pause" 即可）</span><br>
+        <span class="cmt"># Claude 会保存进度，并把状态文件重命名为 paused-&lt;feature&gt;.md</span><br>
+        <br>
+        <span class="cmt"># 之后再恢复（下次会话时，Claude 会自动检测活动工作流）</span><br>
+        /spring-boot-workflows:resume<br>
+        <br>
+        <span class="cmt"># 如果构建失败 3 次以上，Claude 会触发 REPLAN</span><br>
+        <span class="cmt"># 你审阅调整后的计划并批准，然后继续</span>
+      </div>
+      <div class="expect"><strong>你应该期待：</strong>恢复时，Claude 会校验分支、检查产物文件、加载 Context 小节（关键决策），并从中断处精确继续。当你启动 Claude Code 时，会话钩子会自动提醒你存在活动工作流。</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>检查质量并交付</h4>
+      <p>每个 PR 之前，Claude 都会对照按严重级别划分的清单做一次自评审。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 质量门禁在 PR 阶段自动运行</span><br>
+        <span class="cmt"># Claude 加载通用 + 语言专用 + 团队清单</span><br>
+        <span class="cmt"># 逐项检查每个「严重/高」条目，并给出明确证据</span><br>
+        <span class="cmt"># 在创建 PR 之前修复「严重/高」级别的问题</span><br>
+        <br>
+        <span class="cmt"># 你也可以评审他人的 PR：</span><br>
+        /spring-boot-workflows:review 42 --strict
+      </div>
+      <div class="expect"><strong>你应该期待：</strong>创建的 PR 带有结构化的正文：摘要、按阶段组织的改动、测试结果，以及质量清单。严重问题会在 PR 创建之前被修复 &mdash;&mdash; 而不是之后。</div>
+    </div>
+
+    <div class="usage-step">
+      <h4>持续学习与改进</h4>
+      <p>工作流完成后，捕获模式并跟踪度量，以改进你的流程。</p>
+      <div class="cmd-block">
+        <span class="cmt"># 从上一个工作流中捕获模式</span><br>
+        /spring-boot-workflows:learn capture<br>
+        <br>
+        <span class="cmt"># 查看工作流度量</span><br>
+        /spring-boot-workflows:metrics<br>
+        /spring-boot-workflows:metrics health<br>
+        <br>
+        <span class="cmt"># 对近期工作流做一次复盘</span><br>
+        /spring-boot-workflows:retrospective --last 10
+      </div>
+      <div class="expect"><strong>你应该期待：</strong>学到的模式会在未来的头脑风暴中自动浮现。每完成一个工作流，知识图谱就会增长一分。度量会显示完成率、REPLAN 频率与瓶颈阶段。</div>
+    </div>
+  </div>
+
+  <div class="usage-tips reveal">
+    <div class="usage-tip">
+      <h5>小任务不必走全套仪式</h5>
+      <p>用 <code>--depth trivial</code> 跳过 SPEC 和 BRAINSTORM，适用于简单改动。或者先用 <code>/scope</code> 判断是否真的需要完整工作流。</p>
+    </div>
+    <div class="usage-tip">
+      <h5>自动化审批门</h5>
+      <p>在 <code>/new-feature</code>、<code>/extend-feature</code>、<code>/refactor</code> 或 <code>/migrate</code> 上使用 <code>--auto</code> 参数跳过交互式审批。当需求已经非常明确时很有用。</p>
+    </div>
+    <div class="usage-tip">
+      <h5>复用过去的工作</h5>
+      <p>完成一次高质量的工作流后，运行 <code>/template save api-endpoint</code>。下次用 <code>/template use api-endpoint user-mgmt</code> 即可预填规格与计划。</p>
+    </div>
+    <div class="usage-tip">
+      <h5>一切皆可定制</h5>
+      <p>编辑 <code>.workflows/config.yml</code>，可以关闭热修复的头脑风暴、修改 PR 基分支、设置计划阶段上限、配置合并策略，或设置工作流串联。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ WHAT YOU GET ════════════════════════════ -->
+<section id="gives" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">你将获得</span>
+    <h2>成果</h2>
+    <p>当你为 Claude Code 引入结构化工作流之后，会发生哪些改变</p>
+  </div>
+
+  <div class="gives-grid reveal">
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent2);">&#128736;</div>
+      <div class="big" style="color:var(--accent2);font-size:1.5rem;">一致性</div>
+      <div class="label">每个功能都走同样的流程，每个 PR 都要跨过同样的质量线。不会再出现「Claude 忘了写测试」或「Claude 用错了模式」。</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent);">&#128337;</div>
+      <div class="big" style="color:var(--accent);font-size:1.5rem;">连续性</div>
+      <div class="label">合上笔记本，3 天后再回来，输入 /spring-boot-workflows:resume。Claude 清楚知道你在哪里停下、做过哪些决定、下一步是什么。零上手成本。</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent4);">&#128170;</div>
+      <div class="big" style="color:var(--accent4);font-size:1.5rem;">信心</div>
+      <div class="label">质量门禁会在 PR 创建之前拦住安全问题、架构违规与缺失的测试。37 项通用 + 45 项 Spring Boot 检查，自动强制执行。</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent5);">&#9889;</div>
+      <div class="big" style="color:var(--accent5);font-size:1.5rem;">速度</div>
+      <div class="label">自适应深度让琐碎任务跳过仪式；模板复用过去的规格；并行执行提示把独立操作批量处理。更少开销，更快交付。</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent3);">&#128640;</div>
+      <div class="big" style="color:var(--accent3);font-size:1.5rem;">可扩展性</div>
+      <div class="label">团队约定、自定义技能与领域专用清单可以在整个组织内推广。内置 1 个团队（<code>spring</code>），并提供模板让你创建自己的团队。</div>
+    </div>
+    <div class="gives-card">
+      <div class="big" style="color:var(--accent2);">&#129504;</div>
+      <div class="big" style="color:var(--accent2);font-size:1.5rem;">学习</div>
+      <div class="label">知识图谱与模式学习让你的工作流越用越聪明。过去的决策会为未来的头脑风暴提供依据，犯过的错则被沉淀为经验教训。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ SETUP ════════════════════════════ -->
+<section class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">开始使用</span>
+    <h2>四条命令，就这么简单。</h2>
+  </div>
+
+  <div class="explainer-visual reveal" style="max-width:700px;margin:0 auto;font-size:14px;">
+    <div class="ev-line"><span class="ev-cmt"># 1. 添加 marketplace（在 Claude Code 内）</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin marketplace add</span> <span class="ev-str">chinaares/spring-boot-workflows</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 2. 安装插件</span></div>
+    <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">spring-boot-workflows</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 3. 初始化你的项目</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:setup</span></div>
+    <div class="ev-line">&nbsp;</div>
+    <div class="ev-line"><span class="ev-cmt"># 4. 开始构建</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:start</span></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ CTA ════════════════════════════ -->
+<section style="text-align:center;padding:80px 28px;">
+  <div class="reveal">
+    <h2 style="font-size:2.2rem;margin-bottom:14px;">
+      把 Claude Code 变成你的<br><span class="grad">工程伙伴</span>
+    </h2>
+    <p style="color:var(--text-dim);margin-bottom:28px;font-size:15px;">
+      开源。专注 Spring Boot。团队可扩展。<br>
+      适用于任何使用 Claude Code 的 Java / Spring Boot 项目。
+    </p>
+    <div class="hero-cmd" style="animation:none;margin-bottom:16px;">
+      <span class="dim">/</span>plugin marketplace add chinaares/spring-boot-workflows
+    </div>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:16px;">
+      <a href="https://github.com/chinaares/spring-boot-workflows" style="color:var(--accent);text-decoration:none;">GitHub</a>
+      &nbsp;&middot;&nbsp; MIT 许可证 &nbsp;&middot;&nbsp; v1.0.0
+    </p>
+  </div>
+</section>
+
+<footer>
+  为那些希望 Claude Code 不仅快、而且<em>有纪律</em>地工作的开发者而构建。
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

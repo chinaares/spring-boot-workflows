@@ -8,7 +8,7 @@
 Java/Spring projects. It keeps the workflow engine intact — 23 phase-driven skills, 18
 orchestration rules, persistent state, proportional review gates — and replaces the
 multi-language asset set with a Spring Boot one: Java coding rules, Spring Boot coding
-rules, Spring-specific review checklists, and 25 vendored Spring Boot domain skills
+rules, Spring-specific review checklists, and 27 vendored Spring Boot domain skills
 covering JPA, REST, security, migrations, transactions, and testing.
 
 ---
@@ -98,7 +98,7 @@ All skills are namespaced under `spring-boot-workflows`.
 | Template | `/spring-boot-workflows:template` | Save and reuse workflow templates |
 | Compose Skill | `/spring-boot-workflows:compose-skill` | Create custom workflow skills |
 
-### Spring Boot domain skills (25)
+### Spring Boot domain skills (27 — 19 topics, Boot 4 and Boot 3 variants)
 
 Vendored under `skills/spring-boot-4/` and `skills/spring-boot-3/`. They are loaded
 **on demand** by the router, not dumped into every session.
@@ -203,7 +203,7 @@ Run it first in `/migrate` and `/diagnose` — deterministic evidence before mod
 |-------------|-----------|
 | 1-3 files, ≤50 lines | **Light**: Critical security checks only |
 | 4-15 files | **Standard**: General + Spring checklists (High/Critical) |
-| 15+ files | **Full**: All checklists, all severity levels |
+| More than 15 files | **Full**: All checklists, all severity levels |
 
 All Critical/High severity items must pass before the PR is created, each with explicit
 evidence (`PASS:` / `FAIL:` / `N/A:`).
