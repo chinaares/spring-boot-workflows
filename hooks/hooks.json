@@ -8,8 +8,9 @@
             "command": "cat \"${CLAUDE_PLUGIN_ROOT}/PROTOCOL.md\""
           },
           {
-            "type": "prompt",
-            "prompt": "Silently check if .workflows/current-state.md exists. If yes, read its YAML frontmatter and tell the user in ONE line: 'Active workflow: <workflow> — <feature> (phase: <phase>). Use /spring-boot-workflows:resume to continue.' Also check for .workflows/paused-*.md files and mention any paused workflows. If nothing found, say nothing."
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/session-start-state.sh\"",
+            "timeout": 10
           }
         ]
       }
