@@ -52,18 +52,19 @@ What would you like to do?
 -- Ship ----------------------------------
   9.  Release          — version, changelog, tag
   10. Review           — PR code review
+  11. CI Setup         — generate GitHub/Gitea Actions workflows
 
 -- Think ---------------------------------
-  11. Brainstorm       — explore ideas and approaches
-  12. Scope            — analyze task complexity before starting
-  13. Test             — generate or improve tests
+  12. Brainstorm       — explore ideas and approaches
+  13. Scope            — analyze task complexity before starting
+  14. Test             — generate or improve tests
 
 -- Meta ----------------------------------
-  14. Retrospective    — analyze workflow history for improvements
-  15. Metrics          — view workflow execution stats
-  16. Learn            — capture or apply patterns
+  15. Retrospective    — analyze workflow history for improvements
+  16. Metrics          — view workflow execution stats
+  17. Learn            — capture or apply patterns
 
-Pick a number (1-16):
+Pick a number (1-17):
 
 Also available as direct commands:
   /git-flow       — branch, commit, PR, merge helpers
@@ -88,6 +89,7 @@ Ask for the required input based on selection:
 | Migrate | What to migrate + from/to |
 | Release | Version number |
 | Review | PR number or branch |
+| CI Setup | Platform (GitHub/Gitea) + optional features (coverage, spotbugs, artifact) |
 | Brainstorm | Topic to explore |
 | Scope | Task description |
 | Test | Target to test |

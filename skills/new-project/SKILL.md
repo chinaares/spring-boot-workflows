@@ -88,6 +88,14 @@ Read back generated file. Verify commands are valid, paths exist, no placeholder
 
 If CLAUDE.md exists, ask: **overwrite**, **merge** (preserve custom, update detected), or **skip**.
 
+### 3.3 — Offer CI Setup
+
+If no workflow exists in `.github/workflows/` or `.gitea/workflows/`, ask:
+
+> Generate CI for this project? (GitHub Actions / Gitea Actions / both / skip)
+
+On confirmation, execute the `ci-setup` skill inline per Rule 9, passing the platform, build tool, Java version, and branches already detected in Phase 1. Do not re-detect them.
+
 **>> Phase complete** — write output to `.workflows/<project-name>/03-generate.md`
 
 ---

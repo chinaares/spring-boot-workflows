@@ -45,7 +45,7 @@ Classify failure by parsing log output. Read `<plugin-root>/rules/` for language
 | **Test Failure** | `FAILED`, `AssertionError`, `expected:`, `Tests run:.*Failures: [1-9]` |
 | **Lint Violation** | `warning:`, `Lint found`, `ktlint`, `detekt`, `eslint` |
 | **Dependency Issue** | `Could not resolve`, `Module not found`, `version conflict` |
-| **Config Error** | `FileNotFoundException`, `missing secret`, `env variable not set`, `permission denied` |
+| **Config Error** | `FileNotFoundException`, `missing secret`, `env variable not set`, `permission denied` — if the workflow file itself is missing or malformed, suggest `/spring-boot-workflows:ci-setup` |
 | **Timeout** | `exceeded`, `timed out`, `deadline`, `cancelled` |
 | **Flaky/Intermittent** | Passed locally, `flaky`, sporadic failures, inconsistent results |
 
@@ -65,7 +65,7 @@ Apply targeted fix based on diagnosis.
 | **Test Failure** | Read test + source; if ambiguous whether test or source is wrong, ask user; default to fixing source |
 | **Lint Violation** | Run auto-fix if available (`ktlint -F`, `eslint --fix`); otherwise manual correction |
 | **Dependency Issue** | Check version mismatches in build files, update/add dependencies, verify resolution |
-| **Config Error** | Identify missing config/secret/file; inform user (cannot auto-create secrets) |
+| **Config Error** | Identify missing config/secret/file; inform user (cannot auto-create secrets). If the workflow is absent or structurally broken, hand off to `/spring-boot-workflows:ci-setup` |
 | **Timeout** | Suggest optimizations (caching, parallelism, test splitting); provide recommendations |
 
 **>> Phase complete** — write output to `.workflows/<description>/03-fix.md` (changes made, approach)

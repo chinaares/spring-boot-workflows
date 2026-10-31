@@ -44,6 +44,14 @@ git:
     delete_branch: true
   protected: ["main", "master", "develop"]
 
+ci:
+  platform: "auto"          # auto | github | gitea | both
+  java_versions: [25]       # workflow JDK version(s)
+  runner: "ubuntu-latest"
+  mirror: "none"            # none | aliyun | tsinghua (writes .mvn/settings.xml)
+  features: [test, coverage, artifact]  # test | coverage | spotbugs | artifact
+  # Docker, SSH deploy, Gradle, and JDK-source variants are phase 2 — see TODO.md.
+
 workflows:
   new-feature:
     require_spec: true
