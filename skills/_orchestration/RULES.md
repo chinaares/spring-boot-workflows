@@ -36,6 +36,12 @@ All skills reference files relative to the **plugin root** (where this RULES.md 
 2. Determine `<plugin-root>` by removing `/skills/_orchestration/RULES.md` from this file's path
 3. Use `<plugin-root>` wherever skills reference plugin-bundled files (rules, reviews, templates, teams, config)
 
+## References
+
+| File | Purpose |
+|------|---------|
+| `references/platform-cli.md` | `gh` (GitHub) ↔ `tea` (Gitea) command mapping, platform detection, feature gaps |
+
 For project config: read `.workflows/config.yml` in the project root. If it doesn't exist, use `<plugin-root>/config/defaults.yml`.
 
 For user plugin settings: passed as context when the plugin is invoked (project_type, team, git_main_branch, git_dev_branch, commit_format). They serve as fallback when config.yml doesn't specify a value.

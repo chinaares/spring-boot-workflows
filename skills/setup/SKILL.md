@@ -45,7 +45,7 @@ mkdir -p .workflows/specs .workflows/history .workflows/learned
 
 ## Step 3: Generate Config
 
-Read `<plugin-root>/config/defaults.yml` as the base template.
+Read `<plugin-root>/config/defaults.yml` as the base template and copy it **in full** to `.workflows/config.yml`. Every top-level section must survive the copy — do not hand-pick a subset of keys.
 
 Write `.workflows/config.yml` with these substitutions from user plugin settings:
 - `project.type` → project_type setting (or detected type)
@@ -59,17 +59,22 @@ For a detected `spring-boot` project, also write the values detected in Step 1:
 - `project.spring.build_tool` → detected build tool (`maven` or `gradle`)
 - `project.spring.persistence` → detected persistence (`jpa` if `spring-boot-starter-data-jpa` is present, else `jdbc`)
 
+If a git remote was detected, also set `ci.platform` to the detected platform (`github` / `gitea`); keep `auto` when the remote is inconclusive.
+
 The user can further customize `.workflows/config.yml` after generation.
 
 ## Step 3b: Validate Config
 
 After writing `.workflows/config.yml`, validate the generated config:
 
-1. Verify all required top-level keys exist: `project`, `git`, `workflows`, `state`, `quality`
+1. Verify all required top-level keys exist: `project`, `git`, `ci`, `workflows`, `state`, `quality`
 2. Verify `project.type` is one of: `spring-boot`, `java`, `generic`
 3. Verify `git.commits.format` is one of: `conventional`, `angular`, `simple`
 4. Verify `git.merge.strategy` is one of: `squash`, `merge`, `rebase`
 5. Verify `project.spring.boot_major` is one of: `3`, `4` (only when `project.type` is `spring-boot`)
+6. Verify `ci.platform` is one of: `auto`, `github`, `gitea`, `both`
+7. Verify `ci.mirror` is one of: `none`, `aliyun`, `tsinghua`
+8. Verify every `ci.features` entry is one of: `test`, `coverage`, `spotbugs`, `artifact`
 
 If any validation fails, warn the user and offer to fix. Do not block setup for warnings.
 

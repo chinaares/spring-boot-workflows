@@ -273,8 +273,10 @@ Load checklists proportional to change size. Self-check applicable items. Fix Cr
 2. Push and create:
    ```bash
    git push -u origin <branch>
-   gh pr create --base <dev_branch> --title "feat(<scope>): <title>" --body "<body>"
    ```
+   Then create the PR with the platform's CLI (detect the platform first — see Rule 8):
+   - **GitHub**: `gh pr create --base <dev_branch> --title "feat(<scope>): <title>" --body "<body>"`
+   - **Gitea**: `tea pr create --base <dev_branch> --title "feat(<scope>): <title>" --description-file -` (body on stdin)
 
 ### Final summary
 

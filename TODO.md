@@ -10,6 +10,22 @@
 - Config keys under `ci:` in `config/defaults.yml`
 - Integrations: `new-project`, `ci-fix`, `start`
 - Template validation in `tests/validate-workflows.js`
+- Render + YAML/XML golden test in `tests/ci-templates.test.js`
+- Dual-platform `ci-fix` (and PR flows in `review`, `git-flow`, `new-feature`, `release`)
+  via `skills/_orchestration/references/platform-cli.md`
+- Plugin's own CI: `.github/workflows/validate.yml`
+- Verified on Gitea 1.27.3
+  - `checkout@v7`, `cache@v6`, `setup-java@v6`, `upload-artifact@v7` all exist on gitea.com
+  - `checkout` reads only its `token` input; `env: GITEA_TOKEN` is ignored.
+    The built-in `${{ github.token }}` authenticates same-repository checkouts.
+  - `cache`, `setup-java`, `upload-artifact` inputs used by the templates all exist
+- Live end-to-end Gitea run (2026-11-01, run #146, `demo-claude-code-java-2`)
+  - Checkout, JDK 25, Maven cache (`.m2/repository`), `verify`, Testcontainers MySQL,
+    and Flyway all executed successfully
+  - Job failed on a project-specific missing property
+    `app.spring-boot-admin.role.user.name` — not a workflow defect
+  - Temporary PR #9 closed, remote branch `test/ci-setup-gitea` deleted
+  - Follow-up added: `ci-setup` now detects Failsafe/Testcontainers and supports `--skip-it`
 
 ## CI setup — phase 2 backlog
 

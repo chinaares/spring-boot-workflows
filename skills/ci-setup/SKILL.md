@@ -15,10 +15,11 @@ rules: [0, 1, 4, 5, 7, 10, 12, 17]
   [--java <version>]
   [--runner <label>]
   [--mirror aliyun|tsinghua|none]
+  [--skip-it]
   [--dry-run]
 ```
 
-**Defaults**: platform auto-detected from the git remote; features `test,coverage,artifact`; Java version from `pom.xml` (fallback: 25); runner `ubuntu-latest`; mirror `none`.
+**Defaults**: platform auto-detected from the git remote; features `test,coverage,artifact`; Java version from `pom.xml` (fallback: 25); runner `ubuntu-latest`; mirror `none`; integration tests run when the build declares them (use `--skip-it` to opt out).
 
 **Scope (phase 1)**: Maven only. Docker, SSH deploy, Gradle, and JDK-source variants are tracked in `TODO.md`.
 
@@ -67,8 +68,11 @@ Identify the platform, build setup, and existing CI so the generated workflow ma
 | `jacoco-maven-plugin` | `coverage` feature (`jacoco:report`) |
 | `spotbugs-maven-plugin` + `spotbugs-include.xml` / `spotbugs-exclude.xml` | `spotbugs` feature |
 | `maven-surefire-plugin` | Test reports (always uploaded) |
+| `maven-failsafe-plugin`, `*IT.java`, `org.testcontainers` | Integration tests — `verify` will run them |
 | `.mvn/settings.xml` | Reuse it; read `<localRepository>` if present |
 | `.mvn/jvm.config` | Leave untouched |
+
+Integration tests often need CI-only configuration (profile properties, secrets) or a Docker socket. Detect their presence and carry the result into Phase 2 — do not silently assume `verify` will pass.
 
 ### 1.4 — Detect Branches and Java
 
@@ -98,9 +102,10 @@ Java:           25 (temurin)
 Runner:         ubuntu-latest
 Branches:       push [main, develop], PR [main]
 Maven:          ./mvnw -B verify  -s .mvn/settings.xml
+Integration:    run (failsafe/testcontainers detected) | skipped (-DskipITs)
 Cache:          ~/.m2/repository
 Features:       test, coverage, artifact
-Secrets:        GITEA_TOKEN (private Gitea repos only)
+Secrets:        none (GITEA_TOKEN only for private/cross-repo checkout)
 ```
 
 If a target file already exists, also show `diff` against the render and ask: **update**, **skip**, or **keep**.
@@ -115,7 +120,17 @@ If a target file already exists, also show `diff` against the render and ask: **
 - `--mirror` not `none` and `.mvn/settings.xml` is absent → plan to create it.
 - If `.mvn/settings.xml` exists and declares `<localRepository>`, set `{CACHE_PATH}` to **exactly that path** (expanded); otherwise use `~/.m2/repository`.
 
-### 2.4 — Branch Trigger Policy
+### 2.4 — Integration Test Policy
+
+`verify` runs whatever the build binds to it — including Failsafe integration tests. Those frequently need CI-only properties, secrets, or Docker.
+
+- Failsafe / Testcontainers / `*IT.java` detected, and `--skip-it` not set:
+  - Keep `verify` as-is, but tell the user: "Integration tests will run in CI. If they need local-only config or secrets, add a CI profile or re-run with `--skip-it`."
+  - List the properties those tests need if they are visible in the source (for example `${app.*}` placeholders in `@SpringBootTest`).
+- `--skip-it` set: append `-DskipITs` to `{MAVEN_ARGS}`. This keeps unit tests and packaging while skipping Failsafe.
+- No integration tests detected: no warning.
+
+### 2.5 — Branch Trigger Policy
 
 - `push.branches` = main branch + development branch (only when it exists). Nothing else.
 - `pull_request.branches` = the same set.
@@ -148,7 +163,7 @@ Placeholder contract:
 | `{JAVA_VERSION}` | e.g. `25` |
 | `{RUNNER}` | e.g. `ubuntu-latest` |
 | `{MAVEN_CMD}` | `./mvnw` or `mvn` |
-| `{MAVEN_ARGS}` | `-s .mvn/settings.xml` or empty |
+| `{MAVEN_ARGS}` | e.g. `-s .mvn/settings.xml`, `-DskipITs`, or both |
 | `{CACHE_PATH}` | `~/.m2/repository` or the detected custom path |
 | `{ARTIFACT_GLOB}` | e.g. `target/app.jar` |
 | `{MIRROR_ID}`, `{MIRROR_NAME}`, `{MIRROR_URL}` | Mirror values (settings template only) |
@@ -166,6 +181,15 @@ Template blocks are delimited by:
 ```
 
 Keep a block only when its feature was selected; delete the whole block (including the marker lines) otherwise. Supported: `coverage`, `spotbugs`, `artifact`.
+
+Marker rules — a malformed marker silently leaks a step into the output, so treat every deviation as an error and stop:
+
+| Rule | On violation |
+|---|---|
+| Every `# >>> optional:X` has a matching `# <<< optional:X` | Stop; report the line number |
+| Open and close markers name the same feature | Stop; report the mismatch |
+| No block nests inside another | Stop; report the line number |
+| No marker is missing its feature name | Stop; report the line number |
 
 ### 3.3 — Write Safely
 
@@ -235,7 +259,8 @@ CI setup complete
   Settings:  .mvn/settings.xml (aliyun mirror)
 
   Secrets to configure (repository settings → secrets):
-    - GITEA_TOKEN   (private Gitea repositories only)
+    - none by default (Gitea uses the built-in ${{ github.token }})
+    - GITEA_TOKEN   (only for private or cross-repository checkout)
 
   Next:
     1. Review the generated files and commit them
@@ -260,4 +285,5 @@ If both platforms were generated, remind the user that GitHub and Gitea each nee
 | Target workflow file exists | Diff and ask before writing |
 | `.mvn/settings.xml` has an unexpected `localRepository` | Keep it and set `{CACHE_PATH}` to the same expanded path |
 | Requested feature has no plugin | Drop the feature and warn; never emit a failing step |
+| Integration tests fail on CI-only config | Report the missing property; offer `--skip-it` or a CI profile |
 | YAML validation fails | Show the failing line; fix before reporting completion |

@@ -23,9 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: https://gitea.com/actions/checkout@v7
-        env:
-          # Required only for private repositories; configure the GITEA_TOKEN secret.
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        # The action uses the built-in ${{ github.token }} by default.
+        # For private or cross-repository checkout, create a GITEA_TOKEN secret
+        # and pass it explicitly:
+        # with:
+        #   token: ${{ secrets.GITEA_TOKEN }}
 
       - name: Set up JDK {JAVA_VERSION}
         uses: https://gitea.com/actions/setup-java@v6

@@ -27,11 +27,22 @@ Create `.workflows/<pr-name>/` directory and `.workflows/current-state.md` follo
 
 **Goal**: Gather all PR data needed for review.
 
-Detect repository: `gh repo view --json owner,name -q '.owner.login + "/" + .name'`
+Detect the platform first (see Rule 8): `--platform` flag → `ci.platform` in `.workflows/config.yml` → `git remote get-url origin` → ask the user.
 
 **Steps 1.1–1.4 are independent — execute in parallel.**
 
-Fetch via `gh`: PR metadata (`gh pr view --json`), diff (`gh pr diff`), changed files list, CI checks (flag failures), existing comments (to avoid duplicates).
+Fetch the PR data using the platform's CLI:
+
+| Data | GitHub | Gitea |
+|---|---|---|
+| Repository | `gh repo view --json owner,name -q '.owner.login + "/" + .name'` | `tea repo list --output simple` |
+| PR metadata | `gh pr view --json` | `tea pr <pr-number>` |
+| Diff | `gh pr diff <pr-number>` | `tea pr <pr-number>` (summary) + `git diff` against the base branch locally |
+| Changed files | `gh pr diff --name-only` | `git diff --name-only <base>...HEAD` |
+| CI checks | `gh pr checks <pr-number>` | `tea actions runs list --event pull_request` |
+| Existing comments | `gh pr view --json comments` | `tea pr review-comments <pr-number>` and `tea comments list <pr-number>` |
+
+On Gitea, `tea pr` does not return a raw diff — fetch the diff locally with `git fetch origin <base> && git diff <base>...HEAD`.
 
 **Context loading strategy** — do NOT read every file in full:
 - **Small PRs** (≤10 files): Read each changed file in full for context
@@ -85,7 +96,28 @@ Summarize file counts per category with additions/deletions.
 
 **User Approval**: "(1) submit as-is, (2) remove comments, (3) adjust severities, (4) cancel."
 
-Submit: `gh pr review <pr-number> --approve|--request-changes|--comment --body "<summary>"` for verdict. For inline comments: `gh api repos/{owner}/{repo}/pulls/{pr}/comments -f body="<comment>" -f path="<file>" -F line=<line> -f commit_id="<sha>"`.
+Submit the verdict with the platform's CLI:
+
+| Action | GitHub | Gitea |
+|---|---|---|
+| Approve | `gh pr review <pr> --approve --body "<summary>"` | `tea pr approve <pr>` |
+| Request changes | `gh pr review <pr> --request-changes --body "<summary>"` | `tea pr reject <pr>` |
+| Comment only | `gh pr review <pr> --comment --body "<summary>"` | `tea comments add <pr> --description "<summary>"` |
+| Inline comments | `gh api repos/{owner}/{repo}/pulls/{pr}/comments -f body="<comment>" -f path="<file>" -F line=<line> -F commit_id="<sha>"` | See the note below |
+
+**Gitea inline comments** — there is no CLI equivalent. Use the Gitea API:
+
+```
+POST /api/v1/repos/{owner}/{repo}/pulls/{index}/reviews
+{
+  "body": "<summary>",
+  "comments": [
+    { "path": "<file>", "body": "<comment>", "new_position": <line> }
+  ]
+}
+```
+
+Use `new_position` (not `line`), and take the PR **index** (not number) from `tea pr list`. Authenticate with the login's token. Confirm the payload against the target Gitea version before relying on it — if the API call fails, fall back to posting the findings as a single PR comment (`tea comments add`) with each finding prefixed by `path:line`, and tell the user the inline format was unavailable.
 
 Print verdict, counts by severity (Critical/High/Medium/Low), PR URL.
 

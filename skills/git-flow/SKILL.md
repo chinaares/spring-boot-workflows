@@ -62,7 +62,9 @@ Create a pull request with configured settings.
 5. Push: `git push -u origin <current-branch>`
 6. Generate title from branch name (e.g., `feature/add-login` -> `feat: add login`)
 7. Generate body from `git log <base>..HEAD --oneline --no-merges`; use `git.pr.template` if configured
-8. Create via `gh pr create` with `--base`, `--title`, `--body`, `--draft`, `--reviewer`, `--label` (omit empty arrays)
+8. Create the PR using the platform's CLI (detect the platform first — see Rule 8):
+   - **GitHub**: `gh pr create` with `--base`, `--title`, `--body`, `--draft`, `--reviewer`, `--label` (omit empty arrays)
+   - **Gitea**: `tea pr create` with `--base`, `--title`, `--description`, `--draft`, `--assignees`, `--labels` (omit empty arrays). Use `--description-file -` to pass the body on stdin and avoid shell-quoting problems.
 9. Print PR URL
 
 ---
@@ -75,10 +77,9 @@ Merge a branch using the configured strategy.
 2. **Protected branch check**: If merging INTO a protected branch, require explicit user confirmation
 3. Verify the branch exists and has an open PR (if applicable)
 4. Apply configured merge strategy:
-   - `squash`: `gh pr merge <branch> --squash`
-   - `merge`: `gh pr merge <branch> --merge`
-   - `rebase`: `gh pr merge <branch> --rebase`
-5. If `git.merge.delete_branch` is `true`, add `--delete-branch` flag
+   - **GitHub**: `squash` → `gh pr merge <branch> --squash`; `merge` → `gh pr merge <branch> --merge`; `rebase` → `gh pr merge <branch> --rebase`
+   - **Gitea**: `tea pr merge` takes a PR **index**, not a branch name — resolve it first with `tea pr list`, then `squash` → `--style squash`; `merge` → `--style merge`; `rebase` → `--style rebase`
+5. If `git.merge.delete_branch` is `true`, delete the branch after the merge (`gh` merges with `--delete-branch`; with `tea`, run `git push origin --delete <branch>` afterwards)
 6. Pull latest after merge: `git checkout <base-branch> && git pull origin <base-branch>`
 7. Print merge result and branch deletion status
 

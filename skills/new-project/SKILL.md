@@ -70,7 +70,26 @@ Display detection summary (stack, commands, CI, conventions, architecture). Ask:
 
 ### 2.2 — Generate workflows.yml
 
-Create `.workflows/config.yml` from `<plugin-root>/config/defaults.yml` with: `project` (name, type, language), `git.branches` (main, development, feature/bugfix/hotfix/release patterns), `git.commits` (format, types), `git.pr` (base_branch). Populate from detected values.
+Copy `<plugin-root>/config/defaults.yml` **in full** to `.workflows/config.yml`, then overwrite the detected values. Do not hand-pick a subset of keys — every top-level section (`project`, `git`, `ci`, `workflows`, `state`, `skills`, `chains`, `guards`, `learning`, `quality`, `progress`, `telemetry`) must survive the copy.
+
+Overwrite with detected values:
+
+| Key | Detected from |
+|---|---|
+| `project.name` | project name |
+| `project.type` | detected stack (`spring-boot` / `java` / `generic`) |
+| `project.language` | detected language |
+| `project.spring.boot_major` | detected major version (3 or 4) |
+| `project.spring.build_tool` | detected build tool (`maven` or `gradle`) |
+| `project.spring.persistence` | detected persistence (`jpa` if `spring-boot-starter-data-jpa` is present, else `jdbc`) |
+| `git.branches.main` | detected main branch (fallback: `main`) |
+| `git.branches.development` | detected development branch (fallback: `develop`) |
+| `git.commits.format` | detected commit format |
+| `git.pr.base_branch` | detected PR base branch (fallback: `develop`) |
+| `ci.platform` | detected platform (`github` / `gitea` / `both`); use `auto` when the remote is inconclusive |
+| `ci.runner` | detected or confirmed runner label |
+
+Keep every other value from `defaults.yml` unchanged — including `ci.features` and `ci.java_versions`.
 
 **>> Phase complete** — write output to `.workflows/<project-name>/02-configure.md`
 

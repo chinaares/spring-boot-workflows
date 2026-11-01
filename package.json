@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Spring Boot development workflows for Claude Code — the claude-workflows orchestration engine specialized for Java/Spring projects.",
   "private": true,
+  "scripts": {
+    "test": "node tests/validate-workflows.js && node tests/ci-templates.test.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/chinaares/spring-boot-workflows.git"

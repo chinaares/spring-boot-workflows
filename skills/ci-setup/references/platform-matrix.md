@@ -35,11 +35,16 @@ registry or a Gitea instance on another domain), use that host instead.
 
 | Item | GitHub Actions | Gitea Actions |
 |---|---|---|
-| Built-in token | `secrets.GITHUB_TOKEN` (automatic) | `secrets.GITEA_TOKEN` (must be created; only needed for private repos) |
-| Checkout auth | built into `actions/checkout` | pass `GITEA_TOKEN` via `env:` |
+| Built-in token | `secrets.GITHUB_TOKEN` (automatic) | `${{ github.token }}` (automatic; `gitea.token` is the native spelling) |
+| Checkout auth | built into `actions/checkout` | built into `actions/checkout` via its `token` input default `${{ github.token }}` |
+| Private / cross-repo checkout | `token: ${{ secrets.GITHUB_TOKEN }}` or a PAT | `with: token: ${{ secrets.GITEA_TOKEN }}` — an `env: GITEA_TOKEN` alone is ignored |
 | `permissions:` block | supported | partially supported; omit it unless the target version documents it |
 | Environment protection / approvals | `environment:` with reviewers | no equivalent |
 | OIDC cloud credentials | supported | no equivalent — use long-lived secrets |
+
+Verified against Gitea 1.27.3: `actions/checkout@v7` reads only the `token`
+input (`source: src/input-helper.ts`), and the built-in token authenticates a
+same-repository checkout without any secret.
 
 ## Runners
 

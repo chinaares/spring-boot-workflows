@@ -81,7 +81,9 @@ Create pull request from release branch to production.
 1. Target: main branch (from `git.branches.main` in `.workflows/config.yml`)
 2. Title: `Release v{version}`
 3. Body: include changelog entry from Phase 1
-4. Create via `gh pr create`
+4. Create via the platform's CLI (detect the platform first — see Rule 8):
+   - **GitHub**: `gh pr create --base <main> --title "Release v{version}" --body "<body>"`
+   - **Gitea**: `tea pr create --base <main> --title "Release v{version}" --description-file -` (body on stdin)
 5. Output PR URL
 
 **>> Phase complete** — write output to `.workflows/<version>/04-pr.md` (URL, summary)
@@ -92,7 +94,9 @@ After PR is merged, provide tagging commands.
 
 1. Remind user to merge PR first
 2. Tag: `git tag -a v{version} -m "Release v{version}" && git push origin v{version}`
-3. Optional: `gh release create v{version} --title "v{version}" --notes "See CHANGELOG.md"`
+3. Optional release:
+   - **GitHub**: `gh release create v{version} --title "v{version}" --notes "See CHANGELOG.md"`
+   - **Gitea**: `tea releases create v{version} --title "v{version}" --description "See CHANGELOG.md"`
 
 **>> Phase complete** — write output to `.workflows/<version>/05-tag.md`
 

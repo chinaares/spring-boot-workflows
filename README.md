@@ -296,6 +296,7 @@ claude --plugin-dir /path/to/spring-boot-workflows
 ```bash
 claude plugin validate . --strict   # manifest, skills, agents, commands
 node tests/validate-workflows.js     # workflow structure, rules, state protocol
+node tests/ci-templates.test.js      # CI template render + YAML/XML parse
 ```
 
 ### Reload after changes

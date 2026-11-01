@@ -22,6 +22,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { checkMarkers } = require("./lib/render-ci-templates");
 
 const PLUGIN_ROOT = path.resolve(__dirname, "..");
 const VERSION = fs.readFileSync(path.join(PLUGIN_ROOT, "VERSION"), "utf8").trim();
@@ -371,6 +372,7 @@ function validateCiTemplates() {
     test("ci-setup defines the placeholder contract", skill.includes("{CACHE_PATH}") && skill.includes("{JAVA_VERSION}"));
     test("ci-setup documents optional blocks", skill.includes("optional:<feature>"));
     test("ci-setup documents branch trigger policy", skill.includes("feature/**") && skill.includes("pull_request"));
+    test("ci-setup documents integration-test policy", skill.includes("-DskipITs") && skill.includes("failsafe"));
   }
 
   const templates = [
@@ -410,6 +412,12 @@ function validateCiTemplates() {
     const opens = (content.match(/# >>> optional:/g) || []).length;
     const closes = (content.match(/# <<< optional:/g) || []).length;
     test(`${label}: optional blocks balanced`, opens === closes && opens > 0, `${opens} open / ${closes} close`);
+
+    // Markers must be well-formed, not merely balanced — a nameless or
+    // mismatched marker leaks a step into the generated workflow.
+    const markers = checkMarkers(content);
+    test(`${label}: optional markers well-formed`, markers.ok, markers.error);
+
     for (const feature of ["coverage", "spotbugs", "artifact"]) {
       test(`${label}: optional block ${feature}`, content.includes(`# >>> optional:${feature}`) && content.includes(`# <<< optional:${feature}`));
     }
@@ -420,15 +428,19 @@ function validateCiTemplates() {
       .map(m => m[1]);
     test(`${label}: every step declares a usable action`, usesLines.length > 0);
 
+    // Namespace checks apply to executable YAML, not comments — a comment may
+    // legitimately mention the other platform's token expression.
+    const yamlBody = content.split("\n").filter(l => !l.trim().startsWith("#")).join("\n");
+
     if (platform === "github") {
-      test(`${label}: no gitea context`, !/\$\{\{\s*gitea\./.test(content));
-      test(`${label}: no gitea action URLs`, !content.includes("gitea.com/"));
+      test(`${label}: no gitea context`, !/\$\{\{\s*gitea\./.test(yamlBody));
+      test(`${label}: no gitea action URLs`, !yamlBody.includes("gitea.com/"));
       const bad = usesLines.filter(u => !/^(actions|docker|appleboy)\//.test(u) && !u.startsWith("https://github.com/"));
       test(`${label}: github action references are valid`, bad.length === 0, bad.join(", "));
     }
 
     if (platform === "gitea") {
-      test(`${label}: no github context`, !/\$\{\{\s*github\./.test(content));
+      test(`${label}: no github context`, !/\$\{\{\s*github\./.test(yamlBody));
       const bad = usesLines.filter(u => !u.startsWith("https://") && !u.startsWith("docker://"));
       test(`${label}: gitea actions use full URLs`, bad.length === 0, bad.join(", "));
       test(`${label}: checkout uses gitea.com`, content.includes("https://gitea.com/actions/checkout@"));
@@ -441,6 +453,85 @@ function validateCiTemplates() {
     test("defaults.yml has ci section", /^ci:/m.test(defaults));
     test("defaults.yml ci.platform", /^ci:[\s\S]*?platform:/m.test(defaults));
     test("defaults.yml ci.mirror", /^ci:[\s\S]*?mirror:/m.test(defaults));
+  }
+
+  // Skills that generate .workflows/config.yml must copy every top-level
+  // section of defaults.yml, including ci — otherwise project-level CI
+  // settings are silently dropped.
+  const defaultsTopLevel = fs.existsSync(defaultsPath)
+    ? fs.readFileSync(defaultsPath, "utf8")
+      .split("\n")
+      .map(l => l.match(/^([a-z_]+):/))
+      .filter(Boolean)
+      .map(m => m[1])
+    : [];
+  test("defaults.yml has expected top-level sections", defaultsTopLevel.length > 0);
+  test("defaults.yml contains a ci section", defaultsTopLevel.includes("ci"));
+
+  for (const skill of ["setup", "new-project"]) {
+    const skillPath = path.join(PLUGIN_ROOT, "skills", skill, "SKILL.md");
+    if (!fs.existsSync(skillPath)) continue;
+    const content = fs.readFileSync(skillPath, "utf8");
+    test(`${skill}: generates .workflows/config.yml`, content.includes(".workflows/config.yml"));
+    test(`${skill}: preserves the ci section`, content.includes("ci.platform"),
+      "The ci section must survive config generation");
+    test(
+      `${skill}: copies defaults.yml in full`,
+      /in full|as the base template/i.test(content),
+      "The skill must copy every section of defaults.yml, not a hand-picked subset",
+    );
+  }
+}
+
+function validatePlatformSupport() {
+  section("Platform Support");
+
+  const refPath = path.join(PLUGIN_ROOT, "skills", "_orchestration", "references", "platform-cli.md");
+  test("platform-cli reference exists", fs.existsSync(refPath));
+
+  if (fs.existsSync(refPath)) {
+    const ref = fs.readFileSync(refPath, "utf8");
+    test("reference documents platform detection", ref.includes("git remote get-url origin"));
+    test("reference covers CI runs", ref.includes("gh run view") && ref.includes("tea actions runs"));
+    test("reference covers pull requests", ref.includes("gh pr create") && ref.includes("tea pr create"));
+    test("reference covers releases", ref.includes("gh release create") && ref.includes("tea releases create"));
+    test("reference lists Gitea feature gaps", ref.includes("Not supported"));
+  }
+
+  const rule08Path = path.join(PLUGIN_ROOT, "skills", "_orchestration", "rules", "rule-08-common-errors.md");
+  if (fs.existsSync(rule08Path)) {
+    const rule08 = fs.readFileSync(rule08Path, "utf8");
+    test("rule 8 mentions both CLIs", rule08.includes("gh") && rule08.includes("tea"));
+    test("rule 8 documents platform detection", rule08.includes("git remote get-url origin"));
+  }
+
+  // Skills that run CI or PR commands must handle both platforms.
+  const platformSkills = {
+    "ci-fix": { gitea: "tea actions runs", github: "gh run" },
+    "review": { gitea: "tea pr", github: "gh pr" },
+    "git-flow": { gitea: "tea pr", github: "gh pr" },
+    "new-feature": { gitea: "tea pr", github: "gh pr" },
+    "release": { gitea: "tea releases", github: "gh release" },
+  };
+
+  for (const [name, expected] of Object.entries(platformSkills)) {
+    const skillPath = path.join(PLUGIN_ROOT, "skills", name, "SKILL.md");
+    if (!fs.existsSync(skillPath)) continue;
+    const content = fs.readFileSync(skillPath, "utf8");
+    test(`${name}: supports GitHub CLI`, content.includes(expected.github), `expected ${expected.github}`);
+    test(`${name}: supports Gitea CLI`, content.includes(expected.gitea), `expected ${expected.gitea}`);
+    test(`${name}: detects the platform`,
+      content.includes("git remote get-url origin") || content.includes("Detect Platform") || content.includes("Rule 8"),
+      "Skills must resolve the platform before running platform-specific commands");
+  }
+
+  const ciFixPath = path.join(PLUGIN_ROOT, "skills", "ci-fix", "SKILL.md");
+  if (fs.existsSync(ciFixPath)) {
+    const content = fs.readFileSync(ciFixPath, "utf8");
+    test("ci-fix documents platform detection step", content.includes("Step 0b"));
+    test("ci-fix fetches Gitea logs", content.includes("tea actions runs logs"));
+    test("ci-fix monitors on both platforms", content.includes("gh run watch") && content.includes("tea actions runs list"));
+    test("ci-fix handles missing CLI", content.includes("command -v gh") && content.includes("command -v tea"));
   }
 }
 
@@ -548,6 +639,7 @@ validateDirectoryStructure();
 validateLanguageFiles();
 validateSkills();
 validateCiTemplates();
+validatePlatformSupport();
 validateOrchestrationRules();
 
 // ============================================================
