@@ -60,12 +60,16 @@ Create a pull request with configured settings.
 3. **Protected branch check**: Warn if target is `main`/`master` and source is not `release/` or `hotfix/`
 4. Read `<plugin-root>/reviews/` if it exists — include findings in PR body
 5. Push: `git push -u origin <current-branch>`
-6. Generate title from branch name (e.g., `feature/add-login` -> `feat: add login`)
-7. Generate body from `git log <base>..HEAD --oneline --no-merges`; use `git.pr.template` if configured
-8. Create the PR using the platform's CLI (detect the platform first — see Rule 8):
+6. Detect the platform and confirm its CLI is installed — see Rule 8 (`gh` for GitHub, `tea` for Gitea). If the CLI is missing, stop and say which one to install.
+7. Generate title from branch name (e.g., `feature/add-login` -> `feat: add login`)
+8. Generate body from `git log <base>..HEAD --oneline --no-merges`; use `git.pr.template` if configured
+9. Create the PR using the platform's CLI:
    - **GitHub**: `gh pr create` with `--base`, `--title`, `--body`, `--draft`, `--reviewer`, `--label` (omit empty arrays)
-   - **Gitea**: `tea pr create` with `--base`, `--title`, `--description`, `--draft`, `--assignees`, `--labels` (omit empty arrays). Use `--description-file -` to pass the body on stdin and avoid shell-quoting problems.
-9. Print PR URL
+   - **Gitea**: `tea pr create` with `--base`, `--title`, `--description-file -`, `--draft`, `--labels` (omit empty arrays). Pass the body on stdin to avoid shell-quoting problems. Add `--login <name>` when `tea` has more than one configured instance (`tea login list`).
+10. Reviewers and assignees:
+    - **GitHub**: pass `git.pr.reviewers` to `--reviewer`; there is no assignee setting in the config.
+    - **Gitea**: `tea pr create` has no reviewer flag. Tell the user to request reviewers in the Gitea web UI (or via `POST /repos/{owner}/{repo}/pulls/{index}/requested_reviewers` with `{"reviewers": [...]}`). Only convert reviewers to `--assignees` when the user explicitly asks — they are different roles.
+11. Print PR URL
 
 ---
 
@@ -78,7 +82,7 @@ Merge a branch using the configured strategy.
 3. Verify the branch exists and has an open PR (if applicable)
 4. Apply configured merge strategy:
    - **GitHub**: `squash` → `gh pr merge <branch> --squash`; `merge` → `gh pr merge <branch> --merge`; `rebase` → `gh pr merge <branch> --rebase`
-   - **Gitea**: `tea pr merge` takes a PR **index**, not a branch name — resolve it first with `tea pr list`, then `squash` → `--style squash`; `merge` → `--style merge`; `rebase` → `--style rebase`
+   - **Gitea**: `tea pr merge` takes a PR **index**, not a branch name — resolve it first with `tea pr list`, then `squash` → `--style squash`; `merge` → `--style merge`; `rebase` → `--style rebase`. Add `--login <name>` for non-default instances.
 5. If `git.merge.delete_branch` is `true`, delete the branch after the merge (`gh` merges with `--delete-branch`; with `tea`, run `git push origin --delete <branch>` afterwards)
 6. Pull latest after merge: `git checkout <base-branch> && git pull origin <base-branch>`
 7. Print merge result and branch deletion status

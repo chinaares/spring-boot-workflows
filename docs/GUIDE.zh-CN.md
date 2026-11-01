@@ -270,7 +270,7 @@ quality:
 /spring-boot-workflows:new-feature <name> [--from-ticket <url-or-id>] [--from-figma <url>] [--from-spec <path>] [--skip-brainstorm] [--depth full|trivial] [--auto]
 ```
 
-**GATHER**：从 Jira（MCP）、Figma（MCP）、规格文件或交互式提问中收集信息，多种来源可以组合使用。**SPEC**：生成包含用户故事、验收标准、范围、技术要求、边界情况的规格。**BRAINSTORM**：用结构化技法评估 2-4 种方案，产出决策文档。**PLAN**：在 `.workflows/<feature>/plan.md` 中给出分阶段实现计划，每个阶段包含涉及文件、细节、构建检查与提交信息。同时生成 `tasks/todo.md`。**BRANCH**：按 git 配置创建分支。**IMPLEMENT**：逐阶段实现，伴随构建检查、提交与状态更新。Java/Spring 规则从 `<plugin-root>/rules/` 加载，领域技能由 `spring-context` 路由。反复失败时触发 REPLAN。**TEST**：覆盖所有新增代码，并报告覆盖率。**PR**：先跑质量门禁清单，再执行 `gh pr create`。
+**GATHER**：从 Jira（MCP）、Figma（MCP）、规格文件或交互式提问中收集信息，多种来源可以组合使用。**SPEC**：生成包含用户故事、验收标准、范围、技术要求、边界情况的规格。**BRAINSTORM**：用结构化技法评估 2-4 种方案，产出决策文档。**PLAN**：在 `.workflows/<feature>/plan.md` 中给出分阶段实现计划，每个阶段包含涉及文件、细节、构建检查与提交信息。同时生成 `tasks/todo.md`。**BRANCH**：按 git 配置创建分支。**IMPLEMENT**：逐阶段实现，伴随构建检查、提交与状态更新。Java/Spring 规则从 `<plugin-root>/rules/` 加载，领域技能由 `spring-context` 路由。反复失败时触发 REPLAN。**TEST**：覆盖所有新增代码，并报告覆盖率。**PR**：先跑质量门禁清单，再用平台 CLI（`gh` 或 `tea`）创建 PR。
 
 `--depth trivial` 跳过 SPEC、BRAINSTORM 与 TEST；`--depth full` 完整执行八个阶段，不做自动跳过。`--auto` 跳过审批门，在每个决策点采用推荐选项。
 

@@ -70,6 +70,8 @@ Notes:
 | Comment on a PR | `gh pr comment <pr> --body <text>` | `tea comments add <pr> --description <text>` |
 | Inline review comments | `gh api repos/{o}/{r}/pulls/{pr}/comments -f body=... -f path=... -F line=... -F commit_id=...` | No CLI equivalent — use the Gitea API `POST /repos/{owner}/{repo}/pulls/{index}/reviews` |
 | List review comments | `gh pr view <pr> --json comments` | `tea pr review-comments <pr>` |
+| Request reviewers | `gh pr create --reviewer <user>` / `gh pr edit <pr> --add-reviewer <user>` | No `tea` equivalent — use the Gitea web UI or `POST /repos/{owner}/{repo}/pulls/{index}/requested_reviewers` with `{"reviewers": [...]}` |
+| Set assignees | `gh pr edit <pr> --add-assignee <user>` | `tea pr create --assignees <a,b>` (creation only — no edit flag) |
 
 Notes:
 
@@ -82,6 +84,10 @@ Notes:
   each comment needs `path`, `body`, and `new_position` (not `line`).
   Confirm the payload against the target Gitea version before relying on it.
 - `tea pr` (without a subcommand) lists open PRs.
+- `tea pr create` has no reviewer flag. Requesting reviewers needs the Gitea
+  API or web UI; assignees (`--assignees`) are a different role and not a
+  substitute. Add `--login <name>` to `tea` commands when multiple instances
+  are configured.
 
 ## Releases
 
