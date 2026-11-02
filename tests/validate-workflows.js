@@ -626,6 +626,291 @@ function validateOrchestrationRules() {
   test("No stale .claude/reviews/ reference", !content.includes(".claude/reviews/"));
 }
 
+function validateProjectInitParity() {
+  section("Project Init Parity (setup vs new-project)");
+
+  const readSkill = (name) => {
+    const p = path.join(PLUGIN_ROOT, "skills", name, "SKILL.md");
+    return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
+  };
+
+  const setupContent = readSkill("setup");
+  const newProjectContent = readSkill("new-project");
+
+  test("setup SKILL.md exists", setupContent.length > 0);
+  test("new-project SKILL.md exists", newProjectContent.length > 0);
+  if (!setupContent || !newProjectContent) return;
+
+  // --- .workflows subdirectories ---
+  // new-project supersedes /setup, so it must create the same directories.
+  // Later workflows depend on them: /new-feature writes specs, Rule 5
+  // archives the state file into history/, /learn writes learned/.
+  for (const dir of ["specs", "history", "learned"]) {
+    test(
+      `new-project creates .workflows/${dir}`,
+      newProjectContent.includes(`.workflows/${dir}`),
+      `Phase 4.1 must create .workflows/${dir}`,
+    );
+  }
+
+  test(
+    "new-project creates the tasks/ scaffolding",
+    newProjectContent.includes("tasks/todo.md") && newProjectContent.includes("tasks/lessons.md"),
+  );
+  test(
+    "new-project does not put tasks/ under .workflows",
+    !/\.workflows\/tasks/.test(newProjectContent),
+  );
+
+  // --- .gitignore sync ---
+  test("new-project syncs .gitignore", newProjectContent.includes(".gitignore"));
+  test(
+    "new-project keeps tasks/ out of .gitignore",
+    /Do NOT add `tasks\/` to `.gitignore`/.test(newProjectContent),
+  );
+
+  const GITIGNORE_MARKER = "spring-boot-workflows state (transient)";
+  const blockOf = (content) => {
+    const fences = content.match(/```[\w]*\n[\s\S]*?```/g) || [];
+    return fences.find((f) => f.includes(GITIGNORE_MARKER)) || "";
+  };
+  const patternsOf = (block) =>
+    block
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#") && !l.startsWith("```"));
+
+  const setupPatterns = patternsOf(blockOf(setupContent));
+  const newProjectPatterns = patternsOf(blockOf(newProjectContent));
+
+  test("setup has a .gitignore block", setupPatterns.length > 0);
+  test("new-project has a .gitignore block", newProjectPatterns.length > 0);
+
+  // The two skills must ignore exactly the same paths — a project
+  // initialized by one and re-synced by the other would otherwise end up
+  // with a different ignore set.
+  test(
+    "setup and new-project ignore the same paths",
+    setupPatterns.length === newProjectPatterns.length &&
+      setupPatterns.every((p) => newProjectPatterns.includes(p)),
+    `setup=${JSON.stringify(setupPatterns)} new-project=${JSON.stringify(newProjectPatterns)}`,
+  );
+  test(
+    "the .gitignore block never ignores tasks/",
+    !newProjectPatterns.some((p) => p.startsWith("tasks")),
+    JSON.stringify(newProjectPatterns),
+  );
+
+  // --- guards ---
+  test("new-project offers safety guards", newProjectContent.includes("guards.yml"));
+
+  // --- workflow directory naming (Rule 0) ---
+  // The output directory is a filesystem path, so it must be a safe
+  // kebab-case name — a raw project name can contain uppercase, spaces,
+  // or non-ASCII characters.
+  test(
+    "new-project names the output directory in kebab-case",
+    /kebab-case/i.test(newProjectContent),
+    "Rule 0 requires a kebab-case directory name",
+  );
+  test(
+    "new-project caps the output directory name at 40 chars",
+    /40 char/i.test(newProjectContent),
+  );
+  test(
+    "new-project does not use a raw <project-name> directory",
+    !newProjectContent.includes("<project-name>"),
+    "Use <name> (kebab-case) as the directory placeholder",
+  );
+}
+
+function validateSkillComposition() {
+  section("Skill Composition (Rule 9 delegation)");
+
+  const readSkill = (name) => {
+    const p = path.join(PLUGIN_ROOT, "skills", name, "SKILL.md");
+    return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
+  };
+
+  // new-project delegates to ci-setup. Rule 9 requires the output to route
+  // into the parent's directory and forbids a separate state file — without
+  // that, the inlined skill runs its own Step 0 and overwrites the parent's
+  // current-state.md.
+  const newProject = readSkill("new-project");
+  test("new-project mentions the ci-setup delegation", newProject.includes("ci-setup"));
+  test(
+    "new-project pins the ci-setup output route",
+    newProject.includes("**output**"),
+    "Rule 9 delegation must state where the sub-skill writes its output",
+  );
+  test(
+    "new-project forbids overwriting current-state.md in the delegation",
+    /do NOT overwrite `\.workflows\/current-state\.md`/i.test(newProject),
+    "The inlined skill must not create its own state file",
+  );
+  test(
+    "new-project skips the delegated skill's own Step 0",
+    /Step 0 is skipped/i.test(newProject),
+  );
+  test(
+    "new-project keeps the delegated output inside .workflows/<name>/",
+    /this workflow's `(?:<root>\/)?\.workflows\/<name>\/`/i.test(newProject),
+  );
+
+  // new-feature delegates to brainstorm with the same contract.
+  const newFeature = readSkill("new-feature");
+  test(
+    "new-feature routes brainstorm output to the parent directory",
+    /\*\*output\*\*:\s*write to this workflow/i.test(newFeature),
+  );
+}
+
+function validateNewProjectCli() {
+  section("new-project CLI Contract (--path, --preset, chaining)");
+
+  const skillPath = path.join(PLUGIN_ROOT, "skills", "new-project", "SKILL.md");
+  if (!fs.existsSync(skillPath)) {
+    test("new-project SKILL.md exists", false);
+    return;
+  }
+  const content = fs.readFileSync(skillPath, "utf8");
+  const fm = (content.match(/^---\n([\s\S]*?)\n---/) || [])[1] || "";
+
+  // --- Rule 15 (chaining) ---
+  const rules = (fm.match(/^rules:\s*\[([^\]]*)\]/m) || [])[1] || "";
+  const ruleList = rules.split(",").map((r) => r.trim()).filter(Boolean);
+  test(
+    "new-project declares Rule 15 (chaining)",
+    ruleList.includes("15"),
+    `rules: [${ruleList.join(", ")}]`,
+  );
+  test(
+    "new-project applies Rule 15 in Phase 4",
+    /apply Rule 15/i.test(content),
+  );
+
+  // --- --path ---
+  test("new-project documents --path", content.includes("--path"));
+  test("new-project defines a target root", /<root>/.test(content));
+  test(
+    "new-project scopes git commands to the root",
+    /git -C <root>/.test(content),
+    "Do not cd — scope git with -C so the shell context is unchanged",
+  );
+  test(
+    "new-project scopes file writes to the root",
+    /<root>\/\.workflows\/<name>\/01-detect\.md/.test(content),
+    "Phase output paths must be rooted at <root>",
+  );
+  test(
+    "new-project creates CLAUDE.md under the root",
+    /<root>\/CLAUDE\.md/.test(content),
+  );
+
+  // --- --preset ---
+  test("new-project documents --preset", content.includes("--preset"));
+  test(
+    "new-project defines the spring-boot preset",
+    /`--preset spring-boot`/.test(content),
+  );
+  test(
+    "new-project defines the java preset",
+    /`--preset java`/.test(content),
+  );
+  test(
+    "the preset table covers type, language, boot_major, build_tool and persistence",
+    /project\.type/.test(content) &&
+      /project\.language/.test(content) &&
+      /project\.spring\.boot_major/.test(content) &&
+      /project\.spring\.build_tool/.test(content) &&
+      /project\.spring\.persistence/.test(content),
+  );
+  test(
+    "the preset never guesses boot_major",
+    /boot_major` \| ask/i.test(content) && /never guess/i.test(content),
+  );
+  test(
+    "detected values take precedence over the preset",
+    /Detected values always win/i.test(content),
+  );
+  test(
+    "a preset contradiction is reported, not silently resolved",
+    /contradicts the preset/i.test(content),
+  );
+}
+
+function validateInitFeatureParity() {
+  section("Init Feature Parity (setup vs new-project)");
+
+  const readSkill = (name) => {
+    const p = path.join(PLUGIN_ROOT, "skills", name, "SKILL.md");
+    return fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
+  };
+  const setup = readSkill("setup");
+  const newProject = readSkill("new-project");
+  if (!setup || !newProject) return;
+
+  // --- config validation: both skills must run the same checks ---
+  const validationOf = (content) =>
+    content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^\d+\.\s+Verify/.test(l));
+  const setupChecks = validationOf(setup);
+  const newChecks = validationOf(newProject);
+
+  test("setup has config validation checks", setupChecks.length >= 8, `${setupChecks.length} checks`);
+  test("new-project has config validation checks", newChecks.length >= 8, `${newChecks.length} checks`);
+  test(
+    "setup and new-project run the same config validation",
+    setupChecks.length === newChecks.length && setupChecks.every((c, i) => c === newChecks[i]),
+    `setup=${JSON.stringify(setupChecks)}\nnew-project=${JSON.stringify(newChecks)}`,
+  );
+
+  // --- user plugin settings layer ---
+  for (const key of ["project_type", "team", "git_main_branch", "git_dev_branch", "commit_format"]) {
+    test(`new-project applies the ${key} user setting`, newProject.includes(key));
+  }
+  test(
+    "new-project treats user settings as a fallback, not an override",
+    /fallback, not an override/i.test(newProject),
+  );
+  test(
+    "setup treats user settings as a fallback, not an override",
+    /fallback, not an override/i.test(setup),
+  );
+  test(
+    "new-project declares the config precedence chain",
+    /detected value →/.test(newProject) && /user plugin setting →/.test(newProject),
+  );
+  test(
+    "setup declares the config precedence chain",
+    /detected value →/.test(setup) && /user plugin setting →/.test(setup),
+  );
+
+  // --- v2.x migration check ---
+  for (const [label, content] of [["setup", setup], ["new-project", newProject]]) {
+    test(
+      `${label} checks .claude/workflows.yml for v2.x migration`,
+      content.includes(".claude/workflows.yml"),
+    );
+    test(
+      `${label} checks .claude/.workflows-version`,
+      content.includes(".claude/.workflows-version"),
+    );
+  }
+
+  // --- guards installation ---
+  test(
+    "new-project installs guards from the template",
+    newProject.includes("templates/guards.yml.tmpl") && newProject.includes(".workflows/guards.yml"),
+  );
+  test(
+    "setup installs guards from the template",
+    setup.includes("templates/guards.yml.tmpl") && setup.includes(".workflows/guards.yml"),
+  );
+}
+
 // ============================================================
 // Run
 // ============================================================
@@ -641,6 +926,10 @@ validateSkills();
 validateCiTemplates();
 validatePlatformSupport();
 validateOrchestrationRules();
+validateProjectInitParity();
+validateSkillComposition();
+validateNewProjectCli();
+validateInitFeatureParity();
 
 // ============================================================
 // Summary

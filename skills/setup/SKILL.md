@@ -34,8 +34,13 @@ For a detected `spring-boot` project, also determine the **Spring Boot major ver
 — `<plugin-root>/skills/_orchestration/rules/rule-04-build-detection.md`. If the major
 version cannot be determined from the build file, ask the user; never guess.
 
-Compare detected type with user plugin settings (project_type). If they differ, inform the user:
-> "Detected project type: `<detected>`, but plugin is configured as `<user-setting>`. Using plugin config. Run `claude plugin configure spring-boot-workflows` to change."
+Also detect git conventions — `git log --oneline -20` for the commit format, `git branch -a`
+for the main and development branches, and `git remote get-url origin` for the CI platform.
+
+Compare the detected type with the user plugin setting (`project_type`). If they differ, inform the user:
+> "Detected project type: `<detected>`, but plugin is configured as `<user-setting>`. Using the detected value — run `claude plugin configure spring-boot-workflows` to change the plugin default."
+
+Detection is per-project ground truth; a plugin setting is a global default.
 
 ## Step 2: Create Directory Structure
 
@@ -47,12 +52,14 @@ mkdir -p .workflows/specs .workflows/history .workflows/learned
 
 Read `<plugin-root>/config/defaults.yml` as the base template and copy it **in full** to `.workflows/config.yml`. Every top-level section must survive the copy — do not hand-pick a subset of keys.
 
-Write `.workflows/config.yml` with these substitutions from user plugin settings:
-- `project.type` → project_type setting (or detected type)
-- `project.team` → team setting
-- `git.branches.main` → git_main_branch setting (default: `main`)
-- `git.branches.development` → git_dev_branch setting (default: `develop`)
-- `git.commits.format` → commit_format setting (default: `conventional`)
+Write `.workflows/config.yml` with these substitutions from user plugin settings — applied
+**only where detection found no value** (a setting is a fallback, not an override):
+
+- `project.type` → project_type setting (fallback; the detected type wins)
+- `project.team` → team setting (always applies — nothing to detect)
+- `git.branches.main` → git_main_branch setting (fallback; the detected branch wins)
+- `git.branches.development` → git_dev_branch setting (fallback; the detected branch wins)
+- `git.commits.format` → commit_format setting (fallback; the detected format wins)
 
 For a detected `spring-boot` project, also write the values detected in Step 1:
 - `project.spring.boot_major` → detected major version (3 or 4)
@@ -60,6 +67,8 @@ For a detected `spring-boot` project, also write the values detected in Step 1:
 - `project.spring.persistence` → detected persistence (`jpa` if `spring-boot-starter-data-jpa` is present, else `jdbc`)
 
 If a git remote was detected, also set `ci.platform` to the detected platform (`github` / `gitea`); keep `auto` when the remote is inconclusive.
+
+**Precedence per key**: detected value → user plugin setting → `defaults.yml`.
 
 The user can further customize `.workflows/config.yml` after generation.
 
