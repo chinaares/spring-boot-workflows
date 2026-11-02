@@ -5,18 +5,19 @@
 1. [What Is Spring Boot Workflows](#1-what-is-spring-boot-workflows)
 2. [Installation](#2-installation)
 3. [Configuration](#3-configuration)
-4. [The Workflow Lifecycle](#4-the-workflow-lifecycle)
-5. [Quality Gate](#5-quality-gate)
-6. [All Commands](#6-all-commands)
-7. [Workflows In Depth](#7-workflows-in-depth)
-8. [Brainstorming System](#8-brainstorming-system)
-9. [Git Flow Management](#9-git-flow-management)
-10. [Multi-Session State Management](#10-multi-session-state-management)
-11. [Todo & Lessons System](#11-todo--lessons-system)
-12. [Sub-Agent Strategy](#12-sub-agent-strategy)
-13. [File Reference](#13-file-reference)
-14. [Upgrading](#14-upgrading)
-15. [Troubleshooting](#15-troubleshooting)
+4. [Recommended Paths: Choosing a Skill by Project State](#4-recommended-paths-choosing-a-skill-by-project-state)
+5. [The Workflow Lifecycle](#5-the-workflow-lifecycle)
+6. [Quality Gate](#6-quality-gate)
+7. [All Commands](#7-all-commands)
+8. [Workflows In Depth](#8-workflows-in-depth)
+9. [Brainstorming System](#9-brainstorming-system)
+10. [Git Flow Management](#10-git-flow-management)
+11. [Multi-Session State Management](#11-multi-session-state-management)
+12. [Todo & Lessons System](#12-todo--lessons-system)
+13. [Sub-Agent Strategy](#13-sub-agent-strategy)
+14. [File Reference](#14-file-reference)
+15. [Upgrading](#15-upgrading)
+16. [Troubleshooting](#16-troubleshooting)
 
 ---
 
@@ -118,13 +119,32 @@ git:
     format: "conventional"           # conventional | angular | simple
     types: [feat, fix, refactor, test, docs, chore, style, perf]
     scopes: true
+    ticket_reference: false
   pr:
     base_branch: "develop"
     draft: false
+    reviewers: []                     # GitHub reviewer logins
+    labels: []
+    template: |                       # PR body template; supports {summary}/{changes}/{test_plan}
+      ## Summary
+      {summary}
+
+      ## Changes
+      {changes}
+
+      ## Test Plan
+      {test_plan}
   merge:
     strategy: "squash"               # squash | merge | rebase
     delete_branch: true
   protected: ["main", "master", "develop"]
+
+ci:
+  platform: "auto"                   # auto | github | gitea | both
+  java_versions: [25]
+  runner: "ubuntu-latest"
+  mirror: "none"                     # none | aliyun | tsinghua
+  features: [test, coverage, artifact]
 
 workflows:
   new-feature:
@@ -133,33 +153,64 @@ workflows:
     require_brainstorm: true
     max_plan_phases: 10
     adaptive: true
+  extend-feature:
+    require_brainstorm: true
+    require_tests: true
   hotfix:
     base_branch: ""                  # Empty = use git.branches.main
     require_tests: true
     max_lines: 15
+  refactor:
+    require_brainstorm: true
+    require_tests: true
+    max_dependents: 50
+  migrate:
+    require_brainstorm: true
   release:
     changelog: true
     tag_format: "v{version}"
   review:
     checklist: "auto"                # auto | none | <path>
     size_thresholds: { small: 10, medium: 30, large: 50 }
+  test:
+    default_coverage: 90
+    default_type: "unit"
   brainstorm:
     default_depth: "standard"        # quick | standard | deep
+    techniques: ["trade-off-matrix", "six-thinking-hats", "scamper", "reverse-brainstorm", "constraint-mapping"]
 
 state:
   directory: ".workflows"
   history: true
+  max_history: 50
 
 skills:
+  disabled: []
   aliases:
     build: "new-feature"
     fix: "hotfix"
     ship: "release"
 
+chains: {}
+  # new-feature: "review --self"
+  # hotfix: "ci-fix --pr latest"
+
+guards:
+  enabled: false
+  config: ".workflows/guards.yml"
+
+learning:
+  enabled: true
+  storage: ".workflows/learned"
+  knowledge_graph: true
+
 quality:
   self_review: true
   focused_gate: true
   proportional: true
+
+progress:
+  visual: true                       # write a Mermaid progress diagram into the state file
 
 telemetry:
   enabled: false                     # opt-in
@@ -168,17 +219,141 @@ telemetry:
 
 **Tips**: Start with `project.name`, `project.type`, and `git.branches`. The `project.type` drives which coding rules and review checklists are loaded automatically.
 
+**About the `require_*` switches**: they only *permit* skipping a phase when set to `false`; when `true`, the phase always runs. `new-feature` has one extra skip path that is independent of config — passing `--depth trivial` explicitly skips SPEC, BRAINSTORM, and TEST (the adaptive depth estimate landing on Trivial skips only SPEC and BRAINSTORM; TEST still runs). See [§4.3](#43-path-selection-rules-worth-knowing).
+
 ---
 
-## 4. The Workflow Lifecycle
+## 4. Recommended Paths: Choosing a Skill by Project State
 
-Every workflow follows a state machine:
+The plugin ships 24 workflow skills. They are not 24 equal choices — together they cover the whole chain from "figure out what to build" to "ship it". This section picks a skill based on **the state your project is in right now**.
 
+### 4.1 Ask Three Questions First
+
+1. **Is a workflow already running?** Yes → `/resume` (or just run `/start`, which offers resume / pause / abandon).
+2. **How big is this?** Unsure → `/scope`. It only estimates complexity — it does not touch code.
+3. **Are you creating something new, or changing existing code?** That decides `new-feature` vs `extend-feature`.
+
+### 4.2 The 30-Second Decision Table
+
+| Your Current State | Use This Skill | Why |
+|---|---|---|
+| Project never initialized | `/setup` | Detects the stack, creates `.workflows/`, writes `config.yml`, updates `.gitignore` |
+| Starting a brand-new project | `/new-project` | Generates `config.yml` + `CLAUDE.md` + task scaffolding; replaces `/setup` |
+| A vague idea, no idea how far to go | `/scope` | Complexity estimate only — which workflow to use, and whether to split |
+| The idea is clear, the approach isn't | `/brainstorm` | Interactive divergence/convergence, produces a decision record |
+| Building a new feature | `/new-feature` | The full pipeline: GATHER → … → PR |
+| Adding capability to an existing feature, backward compatible | `/extend-feature` | Minimal impact: add rather than change, new files before edits |
+| Adding capability that breaks compatibility | `/scope` first, then `/new-feature` | `extend-feature`'s red line is "no signature changes" |
+| Restructuring code without changing behavior | `/refactor` | Behavioral contracts + every step independently revertable |
+| Upgrading a dependency / swapping an API / changing a schema | `/migrate` | Every step compiles and passes tests on its own |
+| Production is broken, fix it now | `/hotfix` | Minimal diff + a mandatory regression test + a cherry-pick plan |
+| The symptom is unclear, the root cause unknown | `/diagnose` | Localizes only — hands off to the next skill |
+| The CI pipeline is red | `/ci-fix` | Pull logs → classify → targeted fix → monitor the retry |
+| The repo has no CI yet | `/ci-setup` | Generates GitHub / Gitea Actions workflows |
+| Some code has no tests, or coverage is short | `/test` | Branch mapping + categorized tests + gap report |
+| Reviewing someone else's PR | `/review` | Categorizes by layer, inline comments with severity levels |
+| Cutting a release | `/release` | Changelog → version bump → release branch → PR → tag |
+| Just want git operations, not a whole workflow | `/git-flow` | Branch / commit / PR / merge |
+| Worried about committing secrets or dangerous commands | `/guards` | Credential patterns, protected paths, dangerous commands |
+| Did something similar before, want to reuse it | `/template` | Reuses a saved spec + plan |
+| Want the team to accumulate know-how | `/learn` | Captures reusable patterns, surfaced in later brainstorms |
+| Want to know where the process is slow | `/metrics` | Completion rate, duration, bottlenecks, trends |
+| Want to improve the process configuration itself | `/retrospective` | Finds problems in history, proposes concrete config changes |
+| Want a custom workflow of your own | `/compose-skill` | Generates a well-formed `SKILL.md` interactively |
+| Genuinely no idea which one to use | `/start` | Interactive menu, all workflows grouped into 6 categories |
+| Interrupted halfway through | `/resume` | Validates the state file and continues from the break |
+
+### 4.3 Path Selection Rules Worth Knowing
+
+#### ① Size it with `scope` before starting a pipeline
+
+`scope` maps complexity to a workflow directly:
+
+| Signal | Size | Recommended Workflow |
+|---|---|---|
+| 1-2 files, no new APIs | **Trivial** | Edit directly — no workflow needed |
+| 3-10 files, 1-2 layers | **Small** | `/new-feature --depth trivial` or `/extend-feature` |
+| 10-25 files, 2-3 layers | **Medium** | `/new-feature` (standard depth) |
+| 25-50 files, 3+ layers | **Large** | `/new-feature` (adaptive estimate: complex) — consider splitting |
+| 50+ files or breaking changes | **Epic** | Must split into multiple workflows |
+
+Note that `scope` does not always point at `new-feature`: Trivial suggests a direct edit, Small suggests `extend-feature`.
+
+#### ② `--depth trivial` skips SPEC, BRAINSTORM, and TEST
+
+That is independent of the `require_spec: true` / `require_brainstorm: true` / `require_tests: true` switches in config — those switches only permit skipping when set to `false`. Two paths need to be distinguished:
+
+| How it is triggered | Phases skipped | Chain that runs |
+|---|---|---|
+| Explicit `--depth trivial` | SPEC, BRAINSTORM, **TEST** | GATHER → PLAN → BRANCH → IMPLEMENT → PR |
+| Adaptive estimate lands on Trivial (1-2 files, <20 lines) | SPEC, BRAINSTORM | Lightweight plan; TEST still runs |
+
+**To guarantee the full pipeline, pass `--depth full`.**
+
+#### ③ `extend-feature` has a backward-compatibility red line
+
+No changes to existing signatures, no changes to existing test assertions, and modified files must not outnumber new files — the PLAN phase verifies **two** of these (modified files ≤ new files, and no signature changes); test assertions and behavioral compatibility are backstopped by the VERIFY-COMPAT phase. If the extension must break compatibility, `extend-feature` asks you for alternatives (documenting a migration if unavoidable); use `new-feature` instead.
+
+#### ④ `diagnose` localizes but does not fix
+
+Its ROOT-CAUSE phase ends with the exact file, line, and blast radius, then stops. Hand the result to `/hotfix` (production emergency) or `/new-feature` (regular work).
+
+#### ⑤ `hotfix` has a change-size ceiling
+
+`max_lines: 15` by default — beyond that it warns and asks for confirmation. A large diff means it was not really a hotfix.
+
+#### ⑥ Domain skills are routed automatically, not invoked by hand
+
+Before implementation, `spring-context` decides which knowledge set a change needs based on the **changed file paths**. **If the diff touches no security-related file, no security skill is loaded even if the feature is security-related** — hitting `**/security/**`, `**/*SecurityConfig.java`, `**/*Jwt*.java`, or `**/auth/**` routes to `spring-security-jwt` (self-issued tokens) or `oauth2-resource-server` (external IdP). Boot 3 projects get the `-boot3` suffixed names.
+
+#### ⑦ The quality gate always runs before a PR
+
+The gate level scales with the change size: ≤3 files and ≤50 lines → Light (Critical items only); 4-15 files → Standard (High + Critical); >15 files → Full (all severity levels).
+
+### 4.4 Common Handoff Paths
+
+| From | To | Why |
+|---|---|---|
+| `/scope` | `/new-feature` | Size it first, so you don't start a long pipeline at the wrong scale |
+| `/brainstorm` | `/new-feature` | The decision record feeds the SPEC and BRAINSTORM phases |
+| `/template use` | `/new-feature` | Pre-populated spec and plan, continuing from PLAN |
+| `/diagnose` | `/hotfix` | Root cause located, now apply the minimal fix |
+| `/diagnose` | `/new-feature` | The root cause points at a missing capability |
+| `/new-feature` | `/review` | Self-review after completion — can also be chained via `chains` |
+| `/hotfix` | `/ci-fix` | Confirm the pipeline recovered |
+| `/test` | `/new-feature` | Back to the implementation flow once tests are in place |
+
+---
+
+## 5. The Workflow Lifecycle
+
+**Every workflow has its own phase chain** — not all skills share the same one. What they share is the state machine skeleton:
+
+```text
+IDLE -> <collect/diagnose> -> <approach> -> <plan> -> <implement> -> <verify> -> <PR> -> DONE
+                                                        |
+                                                   REPLAN -> back to implementation
 ```
-IDLE -> GATHER -> SPEC -> BRAINSTORM -> PLAN -> BRANCH -> IMPLEMENT -> TEST -> PR -> DONE
-                                                             |
-                                                        REPLAN -> back to IMPLEMENT
-```
+
+The actual phase chains:
+
+| Workflow | Phase Chain |
+|----------|-------------|
+| `new-feature` | GATHER → SPEC → BRAINSTORM → PLAN → BRANCH → IMPLEMENT → TEST → PR |
+| `extend-feature` | ANALYZE → BRAINSTORM → PLAN → IMPLEMENT → VERIFY-COMPAT → TEST → PR |
+| `refactor` | ANALYZE → BRAINSTORM → CONTRACT → DESIGN → MIGRATE → VERIFY → PR |
+| `migrate` | ANALYZE → BRAINSTORM → PLAN → EXECUTE → VERIFY → PR |
+| `hotfix` | DIAGNOSE → FIX → REGRESSION-TEST → PR → CHERRY-PICK |
+| `test` | ANALYZE → PLAN → WRITE → VERIFY → REPORT |
+| `review` | FETCH → CATEGORIZE → CHECK → COMMENT |
+| `diagnose` | REPRODUCE → HYPOTHESIZE → NARROW → ROOT-CAUSE |
+| `ci-fix` | FETCH → DIAGNOSE → FIX → PUSH → MONITOR |
+| `ci-setup` | DETECT → CONFIGURE → GENERATE → VALIDATE → REPORT |
+| `release` | CHANGELOG → VERSION-BUMP → RELEASE-BRANCH → PR → TAG |
+| `brainstorm` | EXPLORE → EVALUATE → RECOMMEND |
+| `new-project` | DETECT → CONFIGURE → GENERATE → SETUP |
+
+Taking `new-feature` as the example, phase by phase:
 
 | Phase | What Happens | Output |
 |-------|-------------|--------|
@@ -189,12 +364,12 @@ IDLE -> GATHER -> SPEC -> BRAINSTORM -> PLAN -> BRANCH -> IMPLEMENT -> TEST -> P
 | **BRANCH** | Create feature branch per git config | Git branch |
 | **IMPLEMENT** | Write code phase-by-phase with build checks | Source code + commits |
 | **TEST** | Write and run tests | Test files + results |
-| **PR** | Push branch, create pull request | GitHub PR |
+| **PR** | Push branch, create pull request | GitHub / Gitea PR |
 | **DONE** | Archive state, report summary | History entry |
 
 **Orchestration rules** (`<plugin-root>/skills/_orchestration/RULES.md`) apply to every execution: phase output documents written to `.workflows/<feature>/`, state updated at every transition, build/test commands auto-detected, quality gate enforced, workflow chaining supported.
 
-**Skippable phases**: Set `require_spec/brainstorm/tests: false` in config or pass `--skip-brainstorm`.
+**Skippable phases**: Set `require_spec/brainstorm/tests: false` in config or pass `--skip-brainstorm`. Note that `new-feature` has a separate skip path independent of config: passing `--depth trivial` explicitly skips SPEC, BRAINSTORM, and TEST (see [§4.3](#43-path-selection-rules-worth-knowing)).
 
 **Decision points**: After SPEC, BRAINSTORM, PLAN, and before PR. The workflow never proceeds without your approval (unless `--auto` is passed).
 
@@ -202,7 +377,7 @@ IDLE -> GATHER -> SPEC -> BRAINSTORM -> PLAN -> BRANCH -> IMPLEMENT -> TEST -> P
 
 ---
 
-## 5. Quality Gate
+## 6. Quality Gate
 
 Two mechanisms enforce code standards across all workflows. Both are **bundled in the plugin** and loaded dynamically based on `project.type` (the language is always Java in this plugin).
 
@@ -217,60 +392,81 @@ Before creating any PR, the agent self-checks against:
 2. Java / Spring Boot checklist (auto-detected from `project.type`)
 3. Team checklist (if defined)
 
-Critical and High severity violations must be fixed before the PR is created.
+Critical and High severity violations must be fixed before the PR is created. The **gate level scales with the size of the change**:
+
+| Change Size | Gate Level | Scope |
+|---|---|---|
+| ≤3 files and ≤50 lines | **Light** | Critical items from the general checklist only; language-specific checklists skipped |
+| 4-15 files | **Standard** | General + language-specific checklists, High and Critical items |
+| >15 files | **Full** | All checklists, all severity levels |
+
+Every Critical item needs an **explicit verdict** (`PASS: <item> — <evidence>` / `FAIL: <item> — <issue> — <fix>` / `N/A: <item> — <reason>`). "Checked, no issues found" is not evidence.
 
 ```yaml
 quality:
-  self_review: true
-  review_checklists: ["general-checklist.md"]
+  self_review: true      # self-check the checklists before a PR
+  focused_gate: true     # weight checks by changed file category
+  proportional: true     # gate level scales with the change size
 ```
 
 ---
 
-## 6. All Commands
+## 7. All Commands
 
 All commands are namespaced under `spring-boot-workflows:`.
 
 | Command | Description |
 |---------|-------------|
-| `/spring-boot-workflows:setup` | Initialize project (dirs, config, .gitignore) |
-| `/spring-boot-workflows:new-feature <name>` | Build a new feature end-to-end |
-| `/spring-boot-workflows:extend-feature <name>` | Add to an existing feature |
-| `/spring-boot-workflows:refactor <target>` | Safely restructure code |
-| `/spring-boot-workflows:hotfix <description>` | Emergency production fix |
-| `/spring-boot-workflows:diagnose <symptom>` | Systematic bug investigation |
-| `/spring-boot-workflows:test <target>` | Generate tests with coverage |
-| `/spring-boot-workflows:review <pr-number>` | Review a pull request |
-| `/spring-boot-workflows:release <version>` | Prepare a versioned release |
-| `/spring-boot-workflows:ci-fix [--run <id>]` | Fix CI/CD failures |
-| `/spring-boot-workflows:ci-setup [--platform github\|gitea]` | Generate GitHub/Gitea Actions CI workflows |
-| `/spring-boot-workflows:migrate <type>` | Incremental migration |
-| `/spring-boot-workflows:new-project` | Bootstrap project setup |
-| `/spring-boot-workflows:brainstorm <topic>` | Standalone brainstorming |
-| `/spring-boot-workflows:scope <description>` | Analyze task complexity before starting |
-| `/spring-boot-workflows:retrospective` | Analyze workflow history for improvements |
-| `/spring-boot-workflows:start` | Start a new workflow or show status |
+| `/spring-boot-workflows:setup [--with-guards]` | Initialize project (dirs, config, .gitignore); optionally generate guard config |
+| `/spring-boot-workflows:new-project [--path <dir>] [--preset <spring-boot\|java>]` | Bootstrap project setup (`CLAUDE.md` + task directories) |
+| `/spring-boot-workflows:start` | Workflow entry point: shows active workflows, lists the menu, gathers arguments, then executes |
 | `/spring-boot-workflows:resume` | Resume a paused/interrupted workflow |
-| `/spring-boot-workflows:git-flow` | Git branch/commit/PR operations |
-| `/spring-boot-workflows:compose-skill` | Compose custom skills |
-| `/spring-boot-workflows:guards` | Safety guard checks |
-| `/spring-boot-workflows:learn` | Capture patterns from workflows |
-| `/spring-boot-workflows:metrics` | Workflow metrics and telemetry |
-| `/spring-boot-workflows:template` | Save and reuse workflow templates |
+| `/spring-boot-workflows:scope <description>` | Analyze task complexity before starting; recommends a workflow and a split |
+| `/spring-boot-workflows:brainstorm --topic "<description>" [--depth quick\|standard\|deep]` | Standalone brainstorming |
+| `/spring-boot-workflows:new-feature <name> [--from-ticket <url-or-id>] [--from-figma <url>] [--from-spec <path>] [--skip-brainstorm] [--depth full\|trivial] [--auto]` | Build a new feature end-to-end |
+| `/spring-boot-workflows:extend-feature <feature-name> <description> [--skip-brainstorm] [--auto]` | Add to an existing feature (backward compatible) |
+| `/spring-boot-workflows:refactor <target> [--scope file\|module\|feature] [--goal "description"] [--skip-brainstorm] [--auto]` | Safely restructure code |
+| `/spring-boot-workflows:migrate <dependency\|api-version\|architecture\|database> [--skip-brainstorm] [--auto]` | Incremental migration |
+| `/spring-boot-workflows:hotfix <description> [--crashlytics <issue-id>] [--log <path>] [--branch <production-branch>]` | Emergency production fix |
+| `/spring-boot-workflows:diagnose <symptom> [--error <message>] [--file <path>] [--since <commit-or-date>]` | Systematic bug investigation (localizes only, does not fix) |
+| `/spring-boot-workflows:ci-fix [--run <run-id>] [--pr <pr-number>] [--platform github\|gitea]` | Fix CI/CD failures |
+| `/spring-boot-workflows:ci-setup [--platform github\|gitea\|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun\|tsinghua\|none] [--skip-it] [--dry-run]` | Generate GitHub/Gitea Actions CI workflows |
+| `/spring-boot-workflows:test <target> [--coverage <pct>] [--type unit\|integration]` | Generate tests with coverage |
+| `/spring-boot-workflows:review <pr-number> [--strict] [--focus <area>]` | Review a pull request |
+| `/spring-boot-workflows:release <version> [--type major\|minor\|patch]` | Prepare a versioned release |
+| `/spring-boot-workflows:git-flow branch <type> <name>` \| `commit <message>` \| `pr [--base <branch>]` \| `merge <branch>` | Git branch/commit/PR/merge operations |
+| `/spring-boot-workflows:guards init` \| `check [--staged] [--force]` \| `report` | Credential and dangerous-operation safety checks |
+| `/spring-boot-workflows:template save <name>` \| `list` \| `use <name> <feature>` | Save and reuse workflow templates |
+| `/spring-boot-workflows:learn capture` \| `list` \| `apply <topic>` | Capture reusable patterns from workflows |
+| `/spring-boot-workflows:metrics` \| `<workflow-name>` \| `trends` | Workflow metrics and telemetry |
+| `/spring-boot-workflows:retrospective [--last <N>] [--workflow <name>]` | Analyze workflow history for improvements |
+| `/spring-boot-workflows:compose-skill <name>` | Compose custom skills |
 
 ---
 
-## 7. Workflows In Depth
+## 8. Workflows In Depth
+
+This section walks through each workflow **from kickoff to ship**. Each entry gives the command form, the real phase chain, and the constraints that matter.
+
+### Scope
+
+```text
+/spring-boot-workflows:scope <description>
+```
+
+**The only skill that changes no code** — it creates no state file and touches no repository. It runs a pre-flight: scan related files, count the layers involved, check for breaking changes, and report a complexity rating (Trivial / Small / Medium / Large / Epic), a recommended workflow, and a split plan.
+
+It is the first gate before starting a pipeline. **The Trivial rating tells you to edit directly instead of running a workflow**; Small points at `extend-feature`; Medium and above point at `new-feature`.
 
 ### New Feature
 
 The most comprehensive workflow. Takes a feature from idea to merged PR.
 
-```
+```text
 /spring-boot-workflows:new-feature <name> [--from-ticket <url-or-id>] [--from-figma <url>] [--from-spec <path>] [--skip-brainstorm] [--depth full|trivial] [--auto]
 ```
 
-**GATHER**: Collects from Jira (MCP), Figma (MCP), spec file, or interactive questions. Multiple sources combinable. **SPEC**: Generates spec with user stories, acceptance criteria, scope, technical requirements, edge cases. **BRAINSTORM**: 2-4 approaches evaluated with structured techniques; produces decision document. **PLAN**: Phased implementation in `.workflows/<feature>/plan.md` with files, details, build checks, commit messages per phase. Also generates `tasks/todo.md`. **BRANCH**: Per git config. **IMPLEMENT**: Phase-by-phase with build checks, commits, and state updates. Java/Spring rules loaded from `<plugin-root>/rules/`, and the Spring domain skills routed by `spring-context`. REPLAN on repeated failures. **TEST**: Targets all new code, reports coverage. **PR**: Quality gate checklists run, then the PR is created with the platform CLI (`gh` or `tea`).
+**GATHER**: Collects from Jira (MCP), Figma (MCP), spec file, or interactive questions. Multiple sources combinable. **SPEC**: Generates spec with user stories, acceptance criteria, scope, technical requirements, edge cases. **BRAINSTORM**: 2-4 approaches evaluated with structured techniques; produces decision document. **PLAN**: Phased implementation in `.workflows/<feature>/plan.md` with files, details, build checks, commit messages per phase. If `tasks/todo.md` exists, it is appended to with one checkable item per phase. **BRANCH**: Per git config. **IMPLEMENT**: Phase-by-phase with build checks, commits, and state updates. Java/Spring rules loaded from `<plugin-root>/rules/`, and the Spring domain skills routed by `spring-context`. REPLAN on repeated failures. **TEST**: Targets all new code, reports coverage. **PR**: Quality gate checklists run, then the PR is created with the platform CLI (`gh` or `tea`).
 
 `--depth trivial` skips SPEC, BRAINSTORM, and TEST; `--depth full` runs all eight phases without auto-skipping. `--auto` skips approval gates and uses the recommended option at each decision point.
 
@@ -278,7 +474,7 @@ Decision points after SPEC, BRAINSTORM, PLAN, and before PR.
 
 ### Extend Feature
 
-```
+```text
 /spring-boot-workflows:extend-feature <feature-name> <extension-description> [--skip-brainstorm]
 ```
 
@@ -286,15 +482,25 @@ Decision points after SPEC, BRAINSTORM, PLAN, and before PR.
 
 ### Refactor
 
-```
-/spring-boot-workflows:refactor <target> [--scope files|module|feature] [--goal "description"]
+```text
+/spring-boot-workflows:refactor <target> [--scope file|module|feature] [--goal "description"] [--skip-brainstorm] [--auto]
 ```
 
 Full dependency graph analysis, behavioral contracts documented before changes, incremental migration where **every step compiles and passes tests independently**. Brainstorm uses Constraint Mapping and Trade-off Matrix (blast radius as highest weight).
 
+### Diagnose
+
+```text
+/spring-boot-workflows:diagnose <symptom> [--error <message>] [--file <path>] [--since <commit-or-date>]
+```
+
+Phase chain **REPRODUCE → HYPOTHESIZE → NARROW → ROOT-CAUSE**. Reproduces the defect, generates ranked hypotheses with evidence, eliminates them one by one with targeted tests or `git bisect`, and ends with the exact file, line, and blast radius.
+
+**It does not fix anything** — the ROOT-CAUSE phase ends the workflow, handing the result to `/hotfix` (production emergency) or `/new-feature` (regular work).
+
 ### Hotfix
 
-```
+```text
 /spring-boot-workflows:hotfix <description> [--crashlytics <issue-id>] [--log <path>] [--branch <production-branch>]
 ```
 
@@ -302,7 +508,7 @@ Optimized for **speed**. No brainstorming, no spec. Absolute minimum change, bra
 
 ### Test
 
-```
+```text
 /spring-boot-workflows:test <target> [--coverage <pct>] [--type unit|integration]
 ```
 
@@ -310,7 +516,7 @@ Targets: `class:Name`, `file:path`, `module:name`, `feature:name`. Analyzes publ
 
 ### Review
 
-```
+```text
 /spring-boot-workflows:review <pr-number>
 ```
 
@@ -318,41 +524,76 @@ Fetches PR via `gh`, categorizes changes by layer, checks architecture/quality/s
 
 ### Release
 
-```
-/spring-boot-workflows:release <version>
+```text
+/spring-boot-workflows:release <version> [--type major|minor|patch]
 ```
 
-Changelog from commits since last tag, version bump detected in `pom.xml` / `build.gradle(.kts)`, release branch, PR to production, tag command.
+Changelog from commits since last tag, version bump detected in `build.gradle(.kts)` / `build.gradle` / `package.json` / `Cargo.toml` / `pyproject.toml` / `version.properties` / `VERSION`, release branch, PR to production, tag command. With `--type` and no explicit version, the next version is computed by semver.
 
 ### CI Fix
 
-```
-/spring-boot-workflows:ci-fix [--run <run-id>] [--pr <pr-number>]
+```text
+/spring-boot-workflows:ci-fix [--run <run-id>] [--pr <pr-number>] [--platform github|gitea]
 ```
 
 Fetches failure details via `gh`, classifies (compile/test/lint/dependency/config/timeout), applies targeted fix, pushes, provides watch command.
 
+### CI Setup
+
+```text
+/spring-boot-workflows:ci-setup [--platform github|gitea|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun|tsinghua|none] [--skip-it] [--dry-run]
+```
+
+Detects platform, build system, Java version, and quality tooling, then generates test, coverage, static-analysis, and artifact-upload steps. It validates GitHub vs Gitea differences in context namespaces and Action URLs, and keeps the Maven cache path consistent with the real local repository.
+
+`--dry-run` previews the files it would write without touching disk; `--skip-it` skips the project-level steps that conflict with CI.
+
 ### Migrate
 
-```
-/spring-boot-workflows:migrate <type>
+```text
+/spring-boot-workflows:migrate <dependency|api-version|architecture|database> [--skip-brainstorm] [--auto]
 ```
 
 Types: `dependency`, `api-version`, `architecture`, `database`. Each step compiles and tests pass independently. Type-specific guidance for version comparison, endpoint mapping, pattern migration, schema migration.
 
 ### New Project
 
-```
+```text
 /spring-boot-workflows:new-project [--path <directory>] [--preset <spring-boot|java>]
 ```
 
 Detects build system, Spring Boot version, persistence stack, CI system, and git conventions. Generates `.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, and the directory structure. Supersedes `/setup` for new projects.
 
+### Setup, Start & Resume
+
+These three form the entry layer — they produce no code.
+
+| Skill | Command | What it does |
+|---|---|---|
+| **Setup** | `/spring-boot-workflows:setup [--with-guards]` | Detects the stack (Maven/Gradle, Boot major version, persistence stack), creates the `.workflows/` directory structure, synthesizes `.workflows/config.yml`, and updates `.gitignore`. `--with-guards` also generates `.workflows/guards.yml` |
+| **Start** | `/spring-boot-workflows:start` | First checks for an active workflow — offering resume / pause / abandon — then lists all workflows under **Build / Fix / Improve / Ship / Think / Meta**, gathers the arguments for your choice, and executes the selected skill. It is also how you check current progress |
+| **Resume** | `/spring-boot-workflows:resume` | Locates the state file, parses and validates it, loads the Context section plus the spec and plan, reports the current phase and progress, and continues from the break |
+
+**Start makes the entry decision for you** — start there when you are unsure which skill to use; it doubles as the status display.
+
+### Meta Skills (Guards / Template / Learn / Metrics / Retrospective / Compose Skill)
+
+These six improve the **process itself**, not the code.
+
+| Skill | Command | What it does |
+|---|---|---|
+| **Guards** | `init` / `check [--staged] [--force]` / `report` | Scans files against `.workflows/guards.yml`: hardcoded tokens (`AKIA`, `sk-`, `ghp_`, `Bearer`, private keys, JWTs), protected paths, and dangerous commands like `rm -rf`. `BLOCK` stops the operation, `WARN` only advises. `--force` logs the override to `.workflows/history/guard-overrides.log` |
+| **Template** | `save <name>` / `list` / `use <name> <feature>` | Saves a completed workflow's spec + plan as a template with a `{feature}` placeholder. `use` pre-fills the spec and plan and continues from the **PLAN** phase, marking GATHER/SPEC/BRAINSTORM as SKIPPED |
+| **Learn** | `capture` / `list` / `apply <topic>` | Extracts reusable patterns (architecture decisions, implementation idioms, test strategies) from completed workflows and stores them tagged in `.workflows/learned/`. Patterns used 2+ times are marked validated and surface automatically in later brainstorms |
+| **Metrics** | `/` / `<workflow-name>` / `trends` | Reads the telemetry data (JSON lines appended after each phase) and shows completion rate, average duration, and bottleneck phases. `trends` compares the last 10 workflows against the previous 10 to show speed changes and REPLAN frequency |
+| **Retrospective** | `[--last <N>]` / `[--workflow <name>]` | Finds high-success workflows, repeated REPLAN triggers, and the phases that keep failing, then proposes concrete configuration changes and can apply the approved ones automatically |
+| **Compose Skill** | `<name>` | Interactively creates a custom workflow skill: asks what it does, which phases it has, what each phase produces, whether it needs brainstorming, and whether it creates a PR — then generates a well-formed `SKILL.md` (frontmatter, orchestration integration, phase output paths, error handling) |
+
 ---
 
-## 8. Brainstorming System
+## 9. Brainstorming System
 
-Runs standalone (`/spring-boot-workflows:brainstorm <topic>`) or as part of any workflow.
+Runs standalone (`/spring-boot-workflows:brainstorm --topic "<description>"`) or as part of any workflow. `--topic` is required.
 
 ### 5 Techniques
 
@@ -366,17 +607,21 @@ Runs standalone (`/spring-boot-workflows:brainstorm <topic>`) or as part of any 
 
 ### Depth Levels
 
-| Depth | Options | Techniques | When |
-|-------|---------|-----------|------|
-| `quick` | 2 | Trade-off Matrix only | Simple decisions |
-| `standard` | 3 | 1 technique + Trade-off Matrix | Most features |
-| `deep` | 4+ | Multiple techniques + Trade-off Matrix | Architecture, high-risk |
+| Depth | Options | Techniques | Interaction | When |
+|-------|---------|-----------|--------|------|
+| `quick` | 2 | Constraint Mapping + Trade-off Matrix | 2-3 exchanges | Simple decisions |
+| `standard` | 3 | 1 technique + Trade-off Matrix | 5-8 exchanges | Most features |
+| `deep` | 4+ | Multiple techniques + Trade-off Matrix | 10+ exchanges | Architecture, high-risk |
 
 **Defaults**: Technique selection is based on depth level — standalone brainstorm selects technique per depth config. extend-feature explicitly uses SCAMPER, refactor uses Constraint Mapping. All levels include Trade-off Matrix for final evaluation.
 
+**Auto-detected depth**: Without an explicit `--depth`, the depth is inferred from signals — naming/styling work or 1-2 files → `quick`; 3-10 files with no breaking changes → `standard`; >10 files, breaking changes, data migration, or multi-service → `deep`. When signals conflict, the **highest** depth wins; when unsure, default to `standard`. The conclusion is announced first, and you can adjust it.
+
+**Standalone vs delegated**: run standalone, `/brainstorm` runs the full EXPLORE → EVALUATE → RECOMMEND and writes to `.workflows/<topic>/`. When delegated by `new-feature`, it runs inline and writes into that workflow's directory.
+
 ---
 
-## 9. Git Flow Management
+## 10. Git Flow Management
 
 Handled by the `/spring-boot-workflows:git-flow` skill, reading from `.workflows/config.yml`.
 
@@ -388,7 +633,7 @@ Handled by the `/spring-boot-workflows:git-flow` skill, reading from `.workflows
 
 ---
 
-## 10. Multi-Session State Management
+## 11. Multi-Session State Management
 
 Three-layer persistence solves context loss between sessions:
 
@@ -406,21 +651,21 @@ Three-layer persistence solves context loss between sessions:
 
 ---
 
-## 11. Todo & Lessons System
+## 12. Todo & Lessons System
 
-**`tasks/todo.md`**: Operational checklist generated from the plan, updated during implementation.
+**`tasks/todo.md`**: Created by `/new-project` (with `# Todo`, `## In Progress`, `## Backlog` sections). The PLAN phase of `/new-feature` appends one checkable item per phase **if the file already exists** — it does not create it.
 
 **`tasks/lessons.md`**: Created by `/new-project`. Captures mistakes — what went wrong, correct pattern, prevention rule — for you and Claude to consult before similar work.
 
 | File | What | Updated |
 |------|------|---------|
-| `tasks/todo.md` | Day-to-day checklist | After each step |
+| `tasks/todo.md` | Day-to-day checklist | Created by `/new-project`; PLAN phase appends phase items |
 | `.workflows/<feature>/plan*.md` | Architectural plan | Planning and REPLAN |
 | `.workflows/current-state.md` | Session metadata | Phase boundaries |
 
 ---
 
-## 12. Sub-Agent Strategy
+## 13. Sub-Agent Strategy
 
 Workflows can leverage sub-agents to parallelize work and protect the main context window. The following is a recommended strategy — Claude will apply sub-agents at its discretion based on task complexity.
 
@@ -435,9 +680,11 @@ Workflows can leverage sub-agents to parallelize work and protect the main conte
 
 Rules: One task per agent. Main thread writes all code. Max 3 concurrent. Results summarized, not dumped raw.
 
+> This table is a **recommended strategy**, not hardcoded sub-agent scheduling — the skill definitions do not force sub-agents. Whether to use them, and how many, is Claude's call based on task complexity and context pressure. The table lists the phases that typically benefit from parallelism.
+
 ---
 
-## 13. File Reference
+## 14. File Reference
 
 ### Bundled in the Plugin
 
@@ -445,7 +692,7 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 
 | Path (relative to plugin root) | Purpose |
 |-------------------------------|---------|
-| `skills/*/SKILL.md` | 24 workflow skills (auto-discovered) |
+| `skills/*/SKILL.md` | 25 files: 24 workflow skills + the `spring-context` router (auto-discovered) |
 | `skills/_orchestration/RULES.md` | Global orchestration rules |
 | `templates/*.tmpl` | 6 templates (spec, plan, state, skill, changelog, guards.yml) |
 | `rules/*.md` | Java and Spring Boot coding rules |
@@ -467,12 +714,12 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 | `.workflows/history/` | No | Completion |
 | `.workflows/specs/` | No | `/setup` (reserved directory) |
 | `.workflows/learned/` | No | Learning system |
-| `tasks/todo.md` | Yes | `/new-project` or PLAN phase |
+| `tasks/todo.md` | Yes | `/new-project` creates it; PLAN phase appends |
 | `tasks/lessons.md` | Yes | `/new-project` |
 
 ---
 
-## 14. Upgrading
+## 15. Upgrading
 
 ```bash
 claude plugin update spring-boot-workflows
@@ -494,7 +741,7 @@ cat $(claude plugin path spring-boot-workflows)/VERSION
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 | Problem | Solution |
 |---------|----------|

@@ -232,6 +232,62 @@
   .usage-tip p { color: var(--text-dim); font-size: 12px; }
   @media (max-width: 768px) { .usage-tips { grid-template-columns: 1fr; } }
 
+  /* ── RECOMMENDED PATHS ── */
+  .path-q {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    max-width: 880px; margin: 0 auto 36px;
+  }
+  .path-q-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; text-align: center;
+  }
+  .path-q-item .n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 800; font-size: 13px;
+  }
+  .path-q-item .t { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+  .path-q-item .t b { color: var(--text); display: block; font-size: 15px; margin-bottom: 4px; }
+  @media (max-width: 768px) { .path-q { grid-template-columns: 1fr; } }
+
+  .path-groups {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;
+  }
+  .path-group {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px; transition: all .3s;
+  }
+  .path-group:hover { border-color: var(--accent); }
+  .path-group .g-h {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--accent2); margin-bottom: 12px;
+  }
+  .path-row {
+    display: flex; gap: 14px; align-items: baseline;
+    padding: 9px 0; border-top: 1px solid var(--border); font-size: 13px;
+  }
+  .path-row:first-of-type { border-top: none; padding-top: 0; }
+  .path-row .st { color: var(--text-mid); flex: 1; line-height: 1.55; }
+  .path-row .sk {
+    font-family: 'SF Mono',monospace; font-size: 11px; color: var(--accent);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .path-row .sk.core { color: var(--accent2); }
+
+  .path-chain {
+    max-width: 880px; margin: 26px auto 0; padding: 20px 24px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    font-size: 12px; color: var(--text-dim); line-height: 2.1;
+  }
+  .path-chain .ch-t {
+    color: var(--text-mid); font-weight: 600; font-size: 12px;
+    letter-spacing: .8px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .path-chain code { color: var(--accent2); font-family: 'SF Mono',monospace; }
+  .path-chain .arrow { color: var(--accent); margin: 0 4px; }
+  .path-chain em { color: var(--text-dim); font-style: normal; }
+
   /* ── HOW IT GIVES ── */
   .gives-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
@@ -300,6 +356,7 @@
     <a href="#problem">问题所在</a>
     <a href="#what">它做什么</a>
     <a href="#workflows">工作流</a>
+    <a href="#paths">怎么选</a>
     <a href="#features">特性</a>
     <a href="#usage">使用指南</a>
     <a href="#gives">你将获得</a>
@@ -740,6 +797,115 @@
       <div class="what"><strong>它做什么：</strong>用 guards.yml 中可配置的阻断/警告模式扫描暂存文件。检测硬编码令牌（AKIA、sk-、ghp_、Bearer）、受保护路径违规，以及危险操作（rm -rf）。BLOCK 级别会直接阻止操作，WARN 级别只提示但允许通过。越权放行会留痕，便于审计。</div>
       <div class="cmd">/spring-boot-workflows:guards init|check|report</div>
     </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128295;</div>
+      <h4>初始化（Setup）</h4>
+      <div class="desc">让现有项目接入工作流体系</div>
+      <div class="what"><strong>它做什么：</strong>检测构建系统（优先 wrapper）、Spring Boot 主版本、持久化技术栈，创建 <code>.workflows/</code> 目录结构，合成 <code>.workflows/config.yml</code>，并把工作流状态条目写进 <code>.gitignore</code>。<code>--with-guards</code> 可同时生成守卫配置。</div>
+      <div class="cmd">/spring-boot-workflows:setup [--with-guards]</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#127918;</div>
+      <h4>入口（Start）</h4>
+      <div class="desc">不确定用哪个？从这里开始</div>
+      <div class="what"><strong>它做什么：</strong>先检查有没有活动工作流 &mdash;&mdash; 有就给你「恢复 / 暂停 / 放弃」三个选项；然后按 <strong>Build / Fix / Improve / Ship / Think / Meta</strong> 六组列出全部工作流，收集完参数后直接执行对应技能。它同时也是查看当前进度的入口。</div>
+      <div class="cmd">/spring-boot-workflows:start</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128260;</div>
+      <h4>恢复（Resume）</h4>
+      <div class="desc">跨会话接上被打断的工作流</div>
+      <div class="what"><strong>它做什么：</strong>定位状态文件、解析并校验状态、加载 Context 小节里的关键决策与规格计划、汇报当前阶段与进度，然后从中断处精确继续。构建失败三次触发的 REPLAN 也可以从这里接上。</div>
+      <div class="cmd">/spring-boot-workflows:resume</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ RECOMMENDED PATHS ════════════════════════════ -->
+<section id="paths" class="wrap">
+  <div class="sec-hdr reveal">
+    <span class="sec-label">推荐路径</span>
+    <h2>按你此刻的状态选技能</h2>
+    <p>24 个工作流不是 24 种平级选择 &mdash;&mdash; 它们串成一条从「想清楚」到「发布上线」的链路</p>
+  </div>
+
+  <div class="path-q reveal">
+    <div class="path-q-item">
+      <div class="n">1</div>
+      <div class="t"><b>有工作流在跑吗？</b>有 &rarr; <code>/resume</code>，或直接 <code>/start</code>，它会先提示你恢复、暂停还是放弃</div>
+    </div>
+    <div class="path-q-item">
+      <div class="n">2</div>
+      <div class="t"><b>这件事有多大？</b>不确定 &rarr; <code>/scope</code>。它只做复杂度预判，不碰代码，不写任何文件</div>
+    </div>
+    <div class="path-q-item">
+      <div class="n">3</div>
+      <div class="t"><b>是新建还是改动？</b>新建能力 &rarr; <code>/new-feature</code>；给既有功能加东西 &rarr; <code>/extend-feature</code></div>
+    </div>
+  </div>
+
+  <div class="path-groups reveal">
+    <div class="path-group">
+      <div class="g-h">入口 / Entry</div>
+      <div class="path-row"><span class="st">项目还没初始化过</span><span class="sk">/setup</span></div>
+      <div class="path-row"><span class="st">要开一个全新项目</span><span class="sk">/new-project</span></div>
+      <div class="path-row"><span class="st">就是不知道该用哪个</span><span class="sk core">/start</span></div>
+      <div class="path-row"><span class="st">中途被打断了</span><span class="sk">/resume</span></div>
+    </div>
+
+    <div class="path-group">
+      <div class="g-h">想清楚 / Think</div>
+      <div class="path-row"><span class="st">只有模糊想法，还不知道做到什么程度</span><span class="sk core">/scope</span></div>
+      <div class="path-row"><span class="st">想法已明确，但方案没定</span><span class="sk">/brainstorm</span></div>
+    </div>
+
+    <div class="path-group">
+      <div class="g-h">造东西 / Build</div>
+      <div class="path-row"><span class="st">新建一个功能</span><span class="sk core">/new-feature</span></div>
+      <div class="path-row"><span class="st">给既有功能加能力，且能保持向后兼容</span><span class="sk">/extend-feature</span></div>
+      <div class="path-row"><span class="st">动代码结构但行为不变</span><span class="sk">/refactor</span></div>
+      <div class="path-row"><span class="st">升级依赖 / 换 API / 改 schema</span><span class="sk">/migrate</span></div>
+    </div>
+
+    <div class="path-group">
+      <div class="g-h">修东西 / Fix</div>
+      <div class="path-row"><span class="st">生产出问题了，要马上修</span><span class="sk core">/hotfix</span></div>
+      <div class="path-row"><span class="st">现象不清，找不到根因</span><span class="sk">/diagnose</span></div>
+      <div class="path-row"><span class="st">线上 CI 挂了</span><span class="sk">/ci-fix</span></div>
+    </div>
+
+    <div class="path-group">
+      <div class="g-h">交付 / Ship</div>
+      <div class="path-row"><span class="st">仓库还没有 CI</span><span class="sk">/ci-setup</span></div>
+      <div class="path-row"><span class="st">某段代码没测试、覆盖率不够</span><span class="sk">/test</span></div>
+      <div class="path-row"><span class="st">要审一个别人的 PR</span><span class="sk">/review</span></div>
+      <div class="path-row"><span class="st">要发版</span><span class="sk">/release</span></div>
+    </div>
+
+    <div class="path-group">
+      <div class="g-h">日常与沉淀 / Routine</div>
+      <div class="path-row"><span class="st">只想要 git 操作，不想跑完整工作流</span><span class="sk">/git-flow</span></div>
+      <div class="path-row"><span class="st">担心提交了密钥或危险操作</span><span class="sk">/guards</span></div>
+      <div class="path-row"><span class="st">之前做过类似功能，想复用</span><span class="sk">/template</span></div>
+      <div class="path-row"><span class="st">想让团队沉淀经验</span><span class="sk">/learn</span></div>
+      <div class="path-row"><span class="st">想知道流程哪里慢、哪卡</span><span class="sk">/metrics</span></div>
+      <div class="path-row"><span class="st">想改进流程本身的配置</span><span class="sk">/retrospective</span></div>
+      <div class="path-row"><span class="st">想自定义一套流程</span><span class="sk">/compose-skill</span></div>
+    </div>
+  </div>
+
+  <div class="path-chain reveal">
+    <div class="ch-t">常见接力路径</div>
+    <code>/scope</code><span class="arrow">&rarr;</span><code>/new-feature</code><em>（先定粒度再启动流水线）</em><br>
+    <code>/brainstorm</code><span class="arrow">&rarr;</span><code>/new-feature</code><em>（决策可作为规格输入）</em><br>
+    <code>/template use</code><span class="arrow">&rarr;</span><code>/new-feature</code><em>（从 PLAN 阶段继续）</em><br>
+    <code>/diagnose</code><span class="arrow">&rarr;</span><code>/hotfix</code><em>（定位根因后转最小修复）</em><br>
+    <code>/diagnose</code><span class="arrow">&rarr;</span><code>/new-feature</code><em>（根因指向缺失的能力）</em><br>
+    <code>/new-feature</code><span class="arrow">&rarr;</span><code>/review</code><em>（完成后的自审）</em>
+    <code>/hotfix</code><span class="arrow">&rarr;</span><code>/ci-fix</code><em>（确认流水线恢复）</em>
   </div>
 </section>
 
@@ -762,7 +928,7 @@
     </div>
     <div class="wf-item">
       <h4>&#9889; 自适应深度</h4>
-      <div class="what">自动感知任务复杂度。改两个文件的配置跳过 SPEC 和 BRAINSTORM（微不足道）；涉及 15 个文件的架构级改动则强制进行多种技法的深度头脑风暴（复杂）。可用 <code>--depth full</code> 覆盖。每个任务都得到恰到好处的流程。</div>
+      <div class="what">自动感知任务复杂度。改 1-2 个文件、不到 20 行的配置会跳过 SPEC 与 BRAINSTORM（微不足道）；超过 10 个文件、涉及架构改动的需求则强制进行多种技法的深度头脑风暴（复杂）。显式传 <code>--depth trivial</code> 会连 TEST 一起跳过，用 <code>--depth full</code> 可覆盖回完整流程。每个任务都得到恰到好处的流程。</div>
     </div>
     <div class="wf-item">
       <h4>&#129504; 知识图谱</h4>
@@ -875,6 +1041,7 @@
       <div class="cmd-block">
         <span class="cmt"># 质量门禁在 PR 阶段自动运行</span><br>
         <span class="cmt"># Claude 加载通用 + 语言专用 + 团队清单</span><br>
+        <span class="cmt"># 档位随改动规模伸缩：≤3 文件 Light · 4-15 文件 Standard · &gt;15 文件 Full</span><br>
         <span class="cmt"># 逐项检查每个「严重/高」条目，并给出明确证据</span><br>
         <span class="cmt"># 在创建 PR 之前修复「严重/高」级别的问题</span><br>
         <br>
@@ -893,7 +1060,7 @@
         <br>
         <span class="cmt"># 查看工作流度量</span><br>
         /spring-boot-workflows:metrics<br>
-        /spring-boot-workflows:metrics health<br>
+        /spring-boot-workflows:metrics trends<br>
         <br>
         <span class="cmt"># 对近期工作流做一次复盘</span><br>
         /spring-boot-workflows:retrospective --last 10
@@ -905,7 +1072,7 @@
   <div class="usage-tips reveal">
     <div class="usage-tip">
       <h5>小任务不必走全套仪式</h5>
-      <p>用 <code>--depth trivial</code> 跳过 SPEC 和 BRAINSTORM，适用于简单改动。或者先用 <code>/scope</code> 判断是否真的需要完整工作流。</p>
+      <p>用 <code>--depth trivial</code> 跳过 SPEC、BRAINSTORM 与 TEST，适用于简单改动。或者先用 <code>/scope</code> 判断是否真的需要完整工作流 &mdash;&mdash; 它给出的复杂度分档会直接告诉你该走哪条。</p>
     </div>
     <div class="usage-tip">
       <h5>自动化审批门</h5>
@@ -913,11 +1080,11 @@
     </div>
     <div class="usage-tip">
       <h5>复用过去的工作</h5>
-      <p>完成一次高质量的工作流后，运行 <code>/template save api-endpoint</code>。下次用 <code>/template use api-endpoint user-mgmt</code> 即可预填规格与计划。</p>
+      <p>完成一次高质量的工作流后，运行 <code>/template save api-endpoint</code>。下次用 <code>/template use api-endpoint user-mgmt</code> 即可预填规格与计划，从 PLAN 阶段继续。</p>
     </div>
     <div class="usage-tip">
       <h5>一切皆可定制</h5>
-      <p>编辑 <code>.workflows/config.yml</code>，可以关闭热修复的头脑风暴、修改 PR 基分支、设置计划阶段上限、配置合并策略，或设置工作流串联。</p>
+      <p>编辑 <code>.workflows/config.yml</code>，可以关闭新功能、扩展、重构、迁移工作流中的头脑风暴与测试阶段、修改 PR 基分支、设置计划阶段上限、配置合并策略，或设置工作流串联。</p>
     </div>
   </div>
 </section>
