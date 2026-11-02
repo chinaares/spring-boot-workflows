@@ -625,6 +625,8 @@ quality:
 
 检测构建系统、Spring Boot 版本、持久化技术栈、CI 系统与 git 约定。生成 `.workflows/config.yml`、`CLAUDE.md`、`tasks/todo.md`、`tasks/lessons.md`，建 `.workflows/` 子目录（`specs/`、`history/`、`learned/`），并更新 `.gitignore` 让工作流产物不进仓库。对新项目而言它取代 `/setup` —— 之后不必再单独跑 `/setup`，而且真跑了反而会让 `config.yml` 变差（见[不要在 `new-project` 之后再跑 `setup`](#第-2-步初始化项目)）。
 
+> **深入分析**：[`new-project` 技能：功能与工作机制](reference/new-project.zh-CN.md) 逐阶段拆解其机制 —— 状态机、钩子强制同步、配置优先级链。
+
 `--path <directory>` 指定目标目录：探测、写入与 git 操作全部在该目录下进行（git 用 `git -C <path>`，不改变 shell 上下文）。省略时使用当前工作目录。
 
 `--preset <spring-boot|java>` 是探测失败时的兜底：它只填补探测不到的字段（`boot_major`、`build_tool`、`persistence`），**探测成功的值永远优先**。`boot_major` 永不猜测 —— 必须由用户确认是 3 还是 4。若预设与探测结果冲突（如 `--preset java` 但 `pom.xml` 声明了 `spring-boot-starter-parent`），会报出冲突并询问，不静默取其一。

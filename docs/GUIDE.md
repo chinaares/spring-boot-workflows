@@ -623,6 +623,8 @@ Types: `dependency`, `api-version`, `architecture`, `database`. Each step compil
 
 Detects build system, Spring Boot version, persistence stack, CI system, and git conventions. Generates `.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, the `.workflows/` subdirectories (`specs/`, `history/`, `learned/`), and updates `.gitignore` so workflow artifacts stay out of the repository. Supersedes `/setup` for new projects — running `/setup` afterwards is not required, and would actually downgrade `config.yml` (see [Do not run `setup` after `new-project`](#step-2-initialize-the-project)).
 
+> **Deep dive**: [The `new-project` Skill — Capabilities and Mechanism](reference/new-project.md) walks through the phase-by-phase mechanics, the state machine, the hook-enforced sync, and the config precedence chain.
+
 `--path <directory>` sets the target directory: detection, file writes, and git operations all run there (git via `git -C <path>`, so the shell context is unchanged). Defaults to the current working directory.
 
 `--preset <spring-boot|java>` is the fallback when detection comes up short. It only fills gaps detection could not resolve (`boot_major`, `build_tool`, `persistence`) — **detected values always win**. `boot_major` is never guessed; the user confirms 3 or 4. If the preset contradicts what was detected (e.g. `--preset java` but `pom.xml` declares `spring-boot-starter-parent`), the conflict is reported and asked about rather than silently resolved.
