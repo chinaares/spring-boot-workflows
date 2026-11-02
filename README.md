@@ -51,14 +51,42 @@ claude plugin configure spring-boot-workflows
 
 ### 1. Initialize the project
 
+For a **new** project:
+
+```
+/spring-boot-workflows:new-project
+```
+
+Detects the build system (Maven/Gradle, wrapper-first), the **Spring Boot major version**,
+the persistence stack, git conventions, and the CI platform; then writes
+`.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, the `.workflows/`
+subdirectories (`specs/`, `history/`, `learned/`), and updates `.gitignore`.
+
+| Flag | Purpose |
+|---|---|
+| `--path <directory>` | Target a directory other than the current one |
+| `--preset <spring-boot\|java>` | Fallback for keys detection cannot resolve (never overrides a detected value) |
+
+> **Do not run `/setup` afterwards.** Both skills rewrite `.workflows/config.yml` wholesale,
+> and `setup`'s version is the weaker of the two — it drops the detected `git.pr.base_branch`,
+> which `hotfix` and `git-flow` read to target PRs.
+
+For an **existing** project that only needs a config and the `.workflows/` layout:
+
 ```
 /spring-boot-workflows:setup
 ```
 
-Detects the build system (Maven/Gradle, wrapper-first), the **Spring Boot major version**,
-and the persistence stack; then writes `.workflows/config.yml`.
+### 2. Optional: safety guards
 
-### 2. Start a workflow
+```
+/spring-boot-workflows:guards init
+```
+
+Writes `.workflows/guards.yml` — hardcoded-token, protected-path, and dangerous-command
+checks. Unlike `/setup --with-guards`, it leaves `config.yml` untouched.
+
+### 3. Start a workflow
 
 ```
 /spring-boot-workflows:start
@@ -76,7 +104,7 @@ All skills are namespaced under `spring-boot-workflows`.
 |-------|---------|-------------|
 | New Feature | `/spring-boot-workflows:new-feature` | Full workflow: spec, brainstorm, plan, implement, test, PR |
 | Extend Feature | `/spring-boot-workflows:extend-feature` | Add to an existing feature with backward compatibility |
-| New Project | `/spring-boot-workflows:new-project` | Bootstrap and scaffold a new project |
+| New Project | `/spring-boot-workflows:new-project` | Bootstrap a new project — detection, config, CLAUDE.md, tasks/ |
 | Hotfix | `/spring-boot-workflows:hotfix` | Emergency production fix with regression testing |
 | CI Fix | `/spring-boot-workflows:ci-fix` | Diagnose and fix failing CI/CD pipelines |
 | CI Setup | `/spring-boot-workflows:ci-setup` | Generate GitHub/Gitea Actions workflows (Maven, tests, coverage, artifacts) |
@@ -91,7 +119,7 @@ All skills are namespaced under `spring-boot-workflows`.
 | Retrospective | `/spring-boot-workflows:retrospective` | Analyze workflow history for improvements |
 | Learn | `/spring-boot-workflows:learn` | Capture and reuse workflow patterns |
 | Metrics | `/spring-boot-workflows:metrics` | Workflow execution analytics |
-| Setup | `/spring-boot-workflows:setup` | Initialize project for workflows |
+| Setup | `/spring-boot-workflows:setup` | Add workflow config to an existing project |
 | Start | `/spring-boot-workflows:start` | Interactive workflow menu |
 | Resume | `/spring-boot-workflows:resume` | Resume paused or interrupted workflows |
 | Git Flow | `/spring-boot-workflows:git-flow` | Git branching, commit, PR, merge operations |
@@ -176,6 +204,11 @@ Run it first in `/migrate` and `/diagnose` — deterministic evidence before mod
 2. **`.workflows/config.yml`** — project-level overrides
 3. **Plugin userConfig** — values set during `claude plugin install`
 4. **Built-in defaults** — `config/defaults.yml` in the plugin
+
+When `/new-project` generates `.workflows/config.yml`, each key resolves as
+**detected value → `--preset` → userConfig → defaults**. A userConfig value is a
+fallback: it fills keys that detection could not resolve and never overrides a
+detected value.
 
 ### What `.workflows/config.yml` controls
 

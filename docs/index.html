@@ -716,8 +716,8 @@
       <div class="emoji">&#127968;</div>
       <h4>New Project</h4>
       <div class="desc">Bootstrap a project with full Claude Code setup</div>
-      <div class="what"><strong>What it does:</strong> Scans for Maven/Gradle build files, detects the Spring Boot major version and persistence stack, then extracts git conventions from history. Generates .workflows/config.yml and CLAUDE.md with build commands, architecture summary, and code conventions. Sets up task tracking scaffolding.</div>
-      <div class="cmd">/spring-boot-workflows:new-project</div>
+      <div class="what"><strong>What it does:</strong> Scans for Maven/Gradle build files, detects the Spring Boot major version and persistence stack, then extracts git conventions from history. Generates .workflows/config.yml and CLAUDE.md with build commands, architecture summary, and code conventions. Sets up task tracking scaffolding, creates the .workflows/ subdirectories, updates .gitignore, and can generate CI. Supersedes <code>/setup</code> for new projects.</div>
+      <div class="cmd">/spring-boot-workflows:new-project [--path &lt;dir&gt;]</div>
     </div>
 
     <div class="wf-item">
@@ -802,7 +802,7 @@
       <div class="emoji">&#128295;</div>
       <h4>Setup</h4>
       <div class="desc">Wire an existing project into the workflow system</div>
-      <div class="what"><strong>What it does:</strong> Detects the build system (wrapper-first), Spring Boot major version, and persistence stack; creates the <code>.workflows/</code> directory structure; synthesizes <code>.workflows/config.yml</code>; and adds the workflow state entries to <code>.gitignore</code>. <code>--with-guards</code> also generates the guard config.</div>
+      <div class="what"><strong>What it does:</strong> Detects the build system (wrapper-first), Spring Boot major version, and persistence stack; creates the <code>.workflows/</code> directory structure; synthesizes <code>.workflows/config.yml</code> from the plugin defaults plus your userConfig; and adds the workflow state entries to <code>.gitignore</code>. <code>--with-guards</code> also generates the guard config. For a brand-new project use <code>/new-project</code> instead.</div>
       <div class="cmd">/spring-boot-workflows:setup [--with-guards]</div>
     </div>
 
@@ -850,7 +850,7 @@
   <div class="path-groups reveal">
     <div class="path-group">
       <div class="g-h">Entry</div>
-      <div class="path-row"><span class="st">Project never initialized</span><span class="sk">/setup</span></div>
+      <div class="path-row"><span class="st">Existing project never initialized</span><span class="sk">/setup</span></div>
       <div class="path-row"><span class="st">Starting a brand-new project</span><span class="sk">/new-project</span></div>
       <div class="path-row"><span class="st">No idea which one to use</span><span class="sk core">/start</span></div>
       <div class="path-row"><span class="st">Interrupted halfway through</span><span class="sk">/resume</span></div>
@@ -974,15 +974,18 @@
 
     <div class="usage-step">
       <h4>Initialize Your Project</h4>
-      <p>Run setup to detect your project's stack and create the <code>.workflows/</code> directory structure.</p>
+      <p>For a brand-new project, run <code>new-project</code> &mdash; it detects your stack, git conventions, and architecture, then writes the config, the project context file, and the task scaffolding.</p>
       <div class="cmd-block">
-        <span class="cmt"># Inside Claude Code</span><br>
-        /spring-boot-workflows:setup<br>
+        <span class="cmt"># Inside Claude Code &mdash; new project</span><br>
+        /spring-boot-workflows:new-project<br>
         <br>
-        <span class="cmt"># Or for new projects (does setup + generates CLAUDE.md):</span><br>
-        /spring-boot-workflows:new-project
+        <span class="cmt"># Target another directory, or supply a fallback preset:</span><br>
+        /spring-boot-workflows:new-project --path ../api-service<br>
+        <br>
+        <span class="cmt"># Existing project that only needs a config:</span><br>
+        /spring-boot-workflows:setup
       </div>
-      <div class="expect"><strong>What happens:</strong> Creates <code>.workflows/config.yml</code> with your project's detected settings (build system, language, git conventions). Also creates history and learned directories for workflow state. You can customize <code>config.yml</code> after generation.</div>
+      <div class="expect"><strong>What happens:</strong> Creates <code>.workflows/config.yml</code> with your project's detected settings (build system, language, git conventions), plus <code>CLAUDE.md</code>, <code>tasks/</code>, and the state directories. You can customize <code>config.yml</code> after generation. <strong>Don't run <code>/setup</code> after <code>/new-project</code></strong> &mdash; both rewrite the config, and setup's version drops the detected PR base branch.</div>
     </div>
 
     <div class="usage-step">
@@ -1146,7 +1149,7 @@
     <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">spring-boot-workflows</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 3. Set up your project</span></div>
-    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:setup</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:new-project</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 4. Start building</span></div>
     <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:start</span></div>

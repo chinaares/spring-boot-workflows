@@ -49,14 +49,42 @@ claude plugin configure spring-boot-workflows
 
 ### 1. 初始化项目
 
+**新项目**用这个：
+
+```
+/spring-boot-workflows:new-project
+```
+
+检测构建系统（优先使用 wrapper，支持 Maven/Gradle）、**Spring Boot 主版本**、持久化
+技术栈、git 约定与 CI 平台，然后写入 `.workflows/config.yml`、`CLAUDE.md`、
+`tasks/todo.md`、`tasks/lessons.md`，建 `.workflows/` 子目录（`specs/`、`history/`、
+`learned/`），并更新 `.gitignore`。
+
+| 参数 | 作用 |
+|---|---|
+| `--path <directory>` | 指定目标目录（默认当前工作目录） |
+| `--preset <spring-boot\|java>` | 探测不到的字段的兜底预设（永远不覆盖探测成功的值） |
+
+> **不要在之后跑 `/setup`。** 两个技能都会全量重写 `.workflows/config.yml`，而
+> `setup` 的版本更弱 —— 它会丢掉探测出来的 `git.pr.base_branch`，而 `hotfix` 和
+> `git-flow` 靠它确定 PR 的目标分支。
+
+**已有项目**只需要补一份配置和 `.workflows/` 目录结构，用：
+
 ```
 /spring-boot-workflows:setup
 ```
 
-检测构建系统（优先使用 wrapper，支持 Maven/Gradle）、**Spring Boot 主版本**以及持久化
-技术栈，然后写入 `.workflows/config.yml`。
+### 2. 安全护栏（可选）
 
-### 2. 启动工作流
+```
+/spring-boot-workflows:guards init
+```
+
+写入 `.workflows/guards.yml` —— 硬编码令牌、受保护路径、危险命令检查。与
+`/setup --with-guards` 不同，它**不碰** `config.yml`。
+
+### 3. 启动工作流
 
 ```
 /spring-boot-workflows:start
@@ -74,7 +102,7 @@ claude plugin configure spring-boot-workflows
 |-------|---------|-------------|
 | 新功能 | `/spring-boot-workflows:new-feature` | 完整工作流：规格、头脑风暴、计划、实现、测试、PR |
 | 扩展功能 | `/spring-boot-workflows:extend-feature` | 在保持向后兼容的前提下为既有功能追加能力 |
-| 新项目 | `/spring-boot-workflows:new-project` | 初始化并搭建新项目 |
+| 新项目 | `/spring-boot-workflows:new-project` | 搭建新项目 —— 探测、配置、CLAUDE.md、tasks/ |
 | 紧急修复 | `/spring-boot-workflows:hotfix` | 带回归测试的生产环境紧急修复 |
 | CI 修复 | `/spring-boot-workflows:ci-fix` | 诊断并修复失败的 CI/CD 流水线 |
 | CI 生成 | `/spring-boot-workflows:ci-setup` | 生成 GitHub/Gitea Actions 工作流（Maven、测试、覆盖率、制品） |
@@ -89,7 +117,7 @@ claude plugin configure spring-boot-workflows
 | 复盘 | `/spring-boot-workflows:retrospective` | 分析工作流历史以寻找改进点 |
 | 学习 | `/spring-boot-workflows:learn` | 捕获并复用工作流模式 |
 | 度量 | `/spring-boot-workflows:metrics` | 工作流执行分析 |
-| 初始化 | `/spring-boot-workflows:setup` | 为工作流初始化项目 |
+| 初始化 | `/spring-boot-workflows:setup` | 为已有项目补工作流配置 |
 | 启动 | `/spring-boot-workflows:start` | 交互式工作流菜单 |
 | 恢复 | `/spring-boot-workflows:resume` | 恢复已暂停或中断的工作流 |
 | Git Flow | `/spring-boot-workflows:git-flow` | Git 分支、提交、PR、合并操作 |
@@ -174,6 +202,9 @@ python3 <plugin-root>/scripts/scan_migration_issues.py /path/to/project
 2. **`.workflows/config.yml`** —— 项目级覆盖
 3. **插件 userConfig** —— 在 `claude plugin install` 期间设置的值
 4. **内置默认值** —— 插件中的 `config/defaults.yml`
+
+`/new-project` 生成 `.workflows/config.yml` 时，每个键按 **探测值 → `--preset` →
+userConfig → 默认值** 解析。userConfig 是兜底：填补探测没能解析出来的键，绝不覆盖探测到的值。
 
 ### `.workflows/config.yml` 控制的内容
 

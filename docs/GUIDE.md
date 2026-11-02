@@ -59,24 +59,83 @@ These values seed your project configuration and can be changed later with `clau
 
 ```bash
 # Inside Claude Code, run:
-/spring-boot-workflows:setup
+/spring-boot-workflows:new-project
 ```
 
-The setup skill:
+For a **new** project, `new-project` is the entry point. It supersedes `setup` — there is no need to run `setup` afterwards.
 
 | Action | Result |
 |--------|--------|
 | Detects project stack | Maven/Gradle (wrapper-first), Spring Boot major version (`3`/`4`), persistence stack (`jpa`/`jdbc`) |
+| Detects git conventions | Commit format, main/development branch, CI platform from the remote |
+| Detects architecture | Pattern, DI framework, key directories, module structure |
 | Creates state directories | `.workflows/`, `.workflows/specs/`, `.workflows/history/`, `.workflows/learned/` |
-| Generates config | `.workflows/config.yml` (from plugin defaults + your userConfig) |
+| Generates config | `.workflows/config.yml` (from plugin defaults + detected values + your userConfig) |
+| Validates config | 8 checks on the generated file — required keys and enum values |
+| Generates context | `CLAUDE.md` (build commands, architecture, conventions), `tasks/todo.md`, `tasks/lessons.md` |
 | Updates `.gitignore` | Adds workflow state entries |
+| Offers safety guards | Installs `.workflows/guards.yml` on confirmation |
+| Offers CI | Optionally generates GitHub/Gitea Actions workflows |
+| Migration check | Merges a leftover v2.x `.claude/workflows.yml` into the new config |
+
+| Flag | Purpose |
+|---|---|
+| `--path <directory>` | Target a directory other than the current one |
+| `--preset <spring-boot\|java>` | Fallback for keys detection cannot resolve — never overrides a detected value |
+
+#### Config precedence
+
+Every key in `.workflows/config.yml` resolves in this order:
+
+```
+detected value → --preset value → user plugin setting → defaults.yml
+```
+
+- **detected value** — per-project ground truth, from the detection phase
+- **`--preset`** — an explicit per-invocation choice, used only where detection found nothing
+- **user plugin setting** — the global default from `claude plugin configure spring-boot-workflows` (`project_type`, `team`, `git_main_branch`, `git_dev_branch`, `commit_format`)
+- **`defaults.yml`** — the plugin's built-in defaults
+
+A plugin setting is a **fallback, not an override**. It fills keys that detection could not resolve, and never overrides a detected value. When the two conflict, the detected value wins and the conflict is shown in the confirmation summary — you can then correct either the plugin default or the project config.
+
+#### Do not run `setup` after `new-project`
+
+Both skills rewrite `.workflows/config.yml` wholesale, so the last one wins — and `setup`'s version is the weaker of the two:
+
+| Key | `new-project` writes | `setup` writes |
+|---|---|---|
+| `git.pr.base_branch` | the detected PR base branch | `develop` (the default) — `hotfix` and `git-flow` read this to target PRs |
+| `project.name` | the detected project name | not written |
+| `ci.runner` | the detected or confirmed runner | not written |
+
+Run `setup` only when you are wiring an **existing** project into the workflow system. After `new-project`, everything is already in place.
+
+#### For an existing project
+
+If the project already exists and only needs a config plus the `.workflows/` layout, use `setup` directly:
+
+```bash
+/spring-boot-workflows:setup
+```
+
+It detects the stack and git conventions, creates the state directories, writes `.workflows/config.yml` from the plugin defaults **plus your userConfig**, validates it, and updates `.gitignore`.
+
+### Optional: safety guards
+
+`new-project` offers to install these during its setup phase. You can also do it at any time, standalone:
+
+```bash
+/spring-boot-workflows:guards init
+```
+
+Writes `.workflows/guards.yml` — hardcoded-token, protected-path, and dangerous-command checks. Prefer this over `/setup --with-guards`: it produces the same file but never touches `config.yml`.
 
 ### Verify & Commit
 
 ```bash
 ls .workflows/
 cat .workflows/config.yml
-git add .workflows/config.yml .gitignore
+git add .workflows/config.yml .gitignore CLAUDE.md tasks/
 git commit -m "chore: initialize spring-boot-workflows v1.0.0"
 ```
 
@@ -237,8 +296,8 @@ The plugin ships 24 workflow skills. They are not 24 equal choices — together 
 
 | Your Current State | Use This Skill | Why |
 |---|---|---|
-| Project never initialized | `/setup` | Detects the stack, creates `.workflows/`, writes `config.yml`, updates `.gitignore` |
-| Starting a brand-new project | `/new-project` | Generates `config.yml` + `CLAUDE.md` + task scaffolding; replaces `/setup` |
+| Existing project never initialized | `/setup` | Detects the stack, creates `.workflows/`, writes `config.yml`, updates `.gitignore` |
+| Starting a brand-new project | `/new-project` | Detects the stack, git conventions, and architecture; generates `config.yml` + `CLAUDE.md` + task scaffolding; replaces `/setup` — **do not run `/setup` afterwards** |
 | A vague idea, no idea how far to go | `/scope` | Complexity estimate only — which workflow to use, and whether to split |
 | The idea is clear, the approach isn't | `/brainstorm` | Interactive divergence/convergence, produces a decision record |
 | Building a new feature | `/new-feature` | The full pipeline: GATHER → … → PR |
@@ -417,8 +476,8 @@ All commands are namespaced under `spring-boot-workflows:`.
 
 | Command | Description |
 |---------|-------------|
-| `/spring-boot-workflows:setup [--with-guards]` | Initialize project (dirs, config, .gitignore); optionally generate guard config |
-| `/spring-boot-workflows:new-project [--path <dir>] [--preset <spring-boot\|java>]` | Bootstrap project setup (`CLAUDE.md` + task directories) |
+| `/spring-boot-workflows:setup [--with-guards]` | Add workflow config to an existing project (dirs, config, .gitignore); optionally generate guard config |
+| `/spring-boot-workflows:new-project [--path <dir>] [--preset <spring-boot\|java>]` | Bootstrap a new project — detection, config, `CLAUDE.md`, task dirs, `.gitignore`, optional CI |
 | `/spring-boot-workflows:start` | Workflow entry point: shows active workflows, lists the menu, gathers arguments, then executes |
 | `/spring-boot-workflows:resume` | Resume a paused/interrupted workflow |
 | `/spring-boot-workflows:scope <description>` | Analyze task complexity before starting; recommends a workflow and a split |
@@ -562,7 +621,11 @@ Types: `dependency`, `api-version`, `architecture`, `database`. Each step compil
 /spring-boot-workflows:new-project [--path <directory>] [--preset <spring-boot|java>]
 ```
 
-Detects build system, Spring Boot version, persistence stack, CI system, and git conventions. Generates `.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, and the directory structure. Supersedes `/setup` for new projects.
+Detects build system, Spring Boot version, persistence stack, CI system, and git conventions. Generates `.workflows/config.yml`, `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, the `.workflows/` subdirectories (`specs/`, `history/`, `learned/`), and updates `.gitignore` so workflow artifacts stay out of the repository. Supersedes `/setup` for new projects — running `/setup` afterwards is not required, and would actually downgrade `config.yml` (see [Do not run `setup` after `new-project`](#step-2-initialize-the-project)).
+
+`--path <directory>` sets the target directory: detection, file writes, and git operations all run there (git via `git -C <path>`, so the shell context is unchanged). Defaults to the current working directory.
+
+`--preset <spring-boot|java>` is the fallback when detection comes up short. It only fills gaps detection could not resolve (`boot_major`, `build_tool`, `persistence`) — **detected values always win**. `boot_major` is never guessed; the user confirms 3 or 4. If the preset contradicts what was detected (e.g. `--preset java` but `pom.xml` declares `spring-boot-starter-parent`), the conflict is reported and asked about rather than silently resolved.
 
 ### Setup, Start & Resume
 
@@ -570,7 +633,7 @@ These three form the entry layer — they produce no code.
 
 | Skill | Command | What it does |
 |---|---|---|
-| **Setup** | `/spring-boot-workflows:setup [--with-guards]` | Detects the stack (Maven/Gradle, Boot major version, persistence stack), creates the `.workflows/` directory structure, synthesizes `.workflows/config.yml`, and updates `.gitignore`. `--with-guards` also generates `.workflows/guards.yml` |
+| **Setup** | `/spring-boot-workflows:setup [--with-guards]` | For an **existing** project: detects the stack (Maven/Gradle, Boot major version, persistence stack), creates the `.workflows/` directory structure, synthesizes `.workflows/config.yml` from the plugin defaults **plus your userConfig**, and updates `.gitignore`. `--with-guards` also generates `.workflows/guards.yml`. For a **new** project use `/new-project` instead — it supersedes this skill |
 | **Start** | `/spring-boot-workflows:start` | First checks for an active workflow — offering resume / pause / abandon — then lists all workflows under **Build / Fix / Improve / Ship / Think / Meta**, gathers the arguments for your choice, and executes the selected skill. It is also how you check current progress |
 | **Resume** | `/spring-boot-workflows:resume` | Locates the state file, parses and validates it, loads the Context section plus the spec and plan, reports the current phase and progress, and continues from the break |
 
@@ -706,14 +769,15 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 
 | Path | Git-tracked | Created By |
 |------|:-:|-----------|
-| `.workflows/config.yml` | Yes | `/spring-boot-workflows:setup` |
+| `.workflows/config.yml` | Yes | `/new-project` (or `/setup` for an existing project) |
 | `.workflows/<feature>/NN-<phase>.md` | No — `.workflows/*/` is gitignored | Each phase |
 | `.workflows/<feature>/plan.md` | No — `.workflows/*/` is gitignored | PLAN phase |
 | `.workflows/current-state.md` | No | Phase transitions |
 | `.workflows/paused-*.md` | No | Pause command |
 | `.workflows/history/` | No | Completion |
-| `.workflows/specs/` | No | `/setup` (reserved directory) |
+| `.workflows/specs/` | No | `/new-project` and `/setup` (reserved directory) |
 | `.workflows/learned/` | No | Learning system |
+| `CLAUDE.md` | Yes | `/new-project` |
 | `tasks/todo.md` | Yes | `/new-project` creates it; PLAN phase appends |
 | `tasks/lessons.md` | Yes | `/new-project` |
 
@@ -752,7 +816,7 @@ cat $(claude plugin path spring-boot-workflows)/VERSION
 | State corrupted | Delete `.workflows/current-state.md`, restart |
 | Quality gate not running | Check `quality.self_review: true` in `.workflows/config.yml` |
 | Wrong rules loaded | Check `project.type` in `.workflows/config.yml` (`spring-boot` loads both rule files) |
-| Config missing | Run `/spring-boot-workflows:setup` to regenerate |
+| Config missing | Run `/spring-boot-workflows:new-project` (new project) or `/spring-boot-workflows:setup` (existing project) to regenerate |
 
 ### Reset
 

@@ -59,24 +59,83 @@
 
 ```bash
 # 在 Claude Code 内运行：
-/spring-boot-workflows:setup
+/spring-boot-workflows:new-project
 ```
 
-setup 技能会：
+**新项目**从这里进。`new-project` 取代了 `setup` —— 之后**不需要**再跑 `setup`。
 
 | 动作 | 结果 |
 |--------|--------|
 | 检测项目技术栈 | Maven/Gradle（优先 wrapper）、Spring Boot 主版本（`3`/`4`）、持久化技术栈（`jpa`/`jdbc`） |
+| 检测 git 约定 | 提交格式、主/开发分支、从 remote 推断的 CI 平台 |
+| 检测架构 | 架构模式、DI 框架、关键目录、模块结构 |
 | 创建状态目录 | `.workflows/`、`.workflows/specs/`、`.workflows/history/`、`.workflows/learned/` |
-| 生成配置 | `.workflows/config.yml`（由插件默认值 + 你的 userConfig 合成） |
+| 生成配置 | `.workflows/config.yml`（由插件默认值 + 探测值 + 你的 userConfig 合成） |
+| 校验配置 | 对生成的文件做 8 项检查 —— 必需键与枚举值 |
+| 生成上下文 | `CLAUDE.md`（构建命令、架构、约定）、`tasks/todo.md`、`tasks/lessons.md` |
 | 更新 `.gitignore` | 加入工作流状态相关条目 |
+| 询问是否装安全护栏 | 确认后写入 `.workflows/guards.yml` |
+| 询问是否生成 CI | 可选生成 GitHub/Gitea Actions 工作流 |
+| 迁移检查 | 把残留的 v2.x `.claude/workflows.yml` 合并进新配置 |
+
+| 参数 | 作用 |
+|---|---|
+| `--path <directory>` | 指定目标目录（默认当前工作目录） |
+| `--preset <spring-boot\|java>` | 探测不到的字段的兜底预设 —— 永远不覆盖探测成功的值 |
+
+#### 配置优先级
+
+`.workflows/config.yml` 里每个键都按这个顺序解析：
+
+```
+探测值 → --preset 值 → 用户插件设置 → defaults.yml
+```
+
+- **探测值** —— 来自探测阶段的、针对当前项目的事实
+- **`--preset`** —— 单次调用的显式选择，只在探测不到时启用
+- **用户插件设置** —— `claude plugin configure spring-boot-workflows` 设的全局默认值（`project_type`、`team`、`git_main_branch`、`git_dev_branch`、`commit_format`）
+- **`defaults.yml`** —— 插件内置默认值
+
+用户插件设置是**兜底，不是覆盖**。它填补探测没能解析出来的键，绝不覆盖探测到的值。两者冲突时以探测值为准，并在确认摘要里标出冲突 —— 你可以据此改插件默认值或项目配置。
+
+#### 不要在 `new-project` 之后再跑 `setup`
+
+两个技能都会全量重写 `.workflows/config.yml`，所以**谁后跑谁赢** —— 而 `setup` 的版本更弱：
+
+| 键 | `new-project` 写入 | `setup` 写入 |
+|---|---|---|
+| `git.pr.base_branch` | 探测出的 PR 目标分支 | `develop`（默认值）—— `hotfix` 和 `git-flow` 靠它确定 PR 目标 |
+| `project.name` | 探测出的项目名 | 不写 |
+| `ci.runner` | 探测或确认的 runner | 不写 |
+
+`setup` 只在你要把**已有项目**接进工作流体系时才用。跑完 `new-project` 之后，该有的都已经有了。
+
+#### 已有项目
+
+项目已经存在、只需要补一份配置和 `.workflows/` 目录结构，直接用 `setup`：
+
+```bash
+/spring-boot-workflows:setup
+```
+
+它检测技术栈与 git 约定、创建状态目录、由插件默认值 **+ 你的 userConfig** 生成 `.workflows/config.yml`、校验配置，并更新 `.gitignore`。
+
+### 可选：安全护栏
+
+`new-project` 在收尾阶段会主动询问是否安装。你也可以随时单独装：
+
+```bash
+/spring-boot-workflows:guards init
+```
+
+写入 `.workflows/guards.yml` —— 硬编码令牌、受保护路径、危险命令检查。优先用它而不是 `/setup --with-guards`：产出文件完全相同，但它**不会碰** `config.yml`。
 
 ### 验证并提交
 
 ```bash
 ls .workflows/
 cat .workflows/config.yml
-git add .workflows/config.yml .gitignore
+git add .workflows/config.yml .gitignore CLAUDE.md tasks/
 git commit -m "chore: initialize spring-boot-workflows v1.0.0"
 ```
 
@@ -239,8 +298,8 @@ telemetry:
 
 | 你此刻的状态 | 用这个技能 | 一句话理由 |
 |---|---|---|
-| 项目还没初始化过 | `/setup` | 检测技术栈、建 `.workflows/` 目录、生成 `config.yml`、更新 `.gitignore` |
-| 要开一个全新项目 | `/new-project` | 生成 `config.yml` + `CLAUDE.md` + 任务脚手架，取代 `/setup` |
+| 已有项目还没初始化过 | `/setup` | 检测技术栈、建 `.workflows/` 目录、生成 `config.yml`、更新 `.gitignore` |
+| 要开一个全新项目 | `/new-project` | 检测技术栈、git 约定与架构；生成 `config.yml` + `CLAUDE.md` + 任务脚手架；取代 `/setup` —— **之后不要再跑 `/setup`** |
 | 只有模糊想法，还不知道做到什么程度 | `/scope` | 只做复杂度评估，给出该走哪条 workflow、要不要拆分 |
 | 想法已明确，但方案没定 | `/brainstorm` | 交互式发散/收敛，产出一份决策记录 |
 | 要新建一个功能 | `/new-feature` | 完整流水线：GATHER → … → PR |
@@ -419,8 +478,8 @@ quality:
 
 | 命令 | 说明 |
 |---------|-------------|
-| `/spring-boot-workflows:setup [--with-guards]` | 初始化项目（目录、配置、.gitignore），可选同时生成守卫配置 |
-| `/spring-boot-workflows:new-project [--path <dir>] [--preset <spring-boot\|java>]` | 初始化项目脚手架（生成 `CLAUDE.md` 与任务目录） |
+| `/spring-boot-workflows:setup [--with-guards]` | 为已有项目补工作流配置（目录、配置、.gitignore），可选同时生成守卫配置 |
+| `/spring-boot-workflows:new-project [--path <dir>] [--preset <spring-boot\|java>]` | 搭建新项目 —— 探测、配置、`CLAUDE.md`、任务目录、`.gitignore`，可选生成 CI |
 | `/spring-boot-workflows:start` | 工作流入口：显示活动工作流、列出菜单、收集参数后直接执行 |
 | `/spring-boot-workflows:resume` | 恢复已暂停/中断的工作流 |
 | `/spring-boot-workflows:scope <description>` | 开始前分析任务复杂度，推荐工作流与拆分方案 |
@@ -564,7 +623,11 @@ quality:
 /spring-boot-workflows:new-project [--path <directory>] [--preset <spring-boot|java>]
 ```
 
-检测构建系统、Spring Boot 版本、持久化技术栈、CI 系统与 git 约定。生成 `.workflows/config.yml`、`CLAUDE.md`、`tasks/todo.md`、`tasks/lessons.md` 以及目录结构。对新项目而言，它取代 `/setup`。
+检测构建系统、Spring Boot 版本、持久化技术栈、CI 系统与 git 约定。生成 `.workflows/config.yml`、`CLAUDE.md`、`tasks/todo.md`、`tasks/lessons.md`，建 `.workflows/` 子目录（`specs/`、`history/`、`learned/`），并更新 `.gitignore` 让工作流产物不进仓库。对新项目而言它取代 `/setup` —— 之后不必再单独跑 `/setup`，而且真跑了反而会让 `config.yml` 变差（见[不要在 `new-project` 之后再跑 `setup`](#第-2-步初始化项目)）。
+
+`--path <directory>` 指定目标目录：探测、写入与 git 操作全部在该目录下进行（git 用 `git -C <path>`，不改变 shell 上下文）。省略时使用当前工作目录。
+
+`--preset <spring-boot|java>` 是探测失败时的兜底：它只填补探测不到的字段（`boot_major`、`build_tool`、`persistence`），**探测成功的值永远优先**。`boot_major` 永不猜测 —— 必须由用户确认是 3 还是 4。若预设与探测结果冲突（如 `--preset java` 但 `pom.xml` 声明了 `spring-boot-starter-parent`），会报出冲突并询问，不静默取其一。
 
 ### 初始化、入口与恢复（Setup / Start / Resume）
 
@@ -572,7 +635,7 @@ quality:
 
 | 技能 | 命令 | 做什么 |
 |---|---|---|
-| **Setup** | `/spring-boot-workflows:setup [--with-guards]` | 检测技术栈（Maven/Gradle、Boot 主版本、持久化栈），建 `.workflows/` 目录结构，合成 `.workflows/config.yml`，更新 `.gitignore`。`--with-guards` 同时生成 `.workflows/guards.yml` |
+| **Setup** | `/spring-boot-workflows:setup [--with-guards]` | 面向**已有项目**：检测技术栈（Maven/Gradle、Boot 主版本、持久化栈），建 `.workflows/` 目录结构，由插件默认值 **+ 你的 userConfig** 合成 `.workflows/config.yml`，更新 `.gitignore`。`--with-guards` 同时生成 `.workflows/guards.yml`。**新项目请用 `/new-project`** —— 它取代本技能 |
 | **Start** | `/spring-boot-workflows:start` | 先检查有没有活动工作流（给出恢复 / 暂停 / 放弃三个选项），再按 **Build / Fix / Improve / Ship / Think / Meta** 六组列出 17 个工作流，收集完参数后直接执行对应技能 |
 | **Resume** | `/spring-boot-workflows:resume` | 定位状态文件、解析并校验状态、加载上下文与规格计划、汇报当前阶段与进度，从中断处继续 |
 
@@ -708,18 +771,19 @@ quality:
 
 | 路径 | 纳入 Git | 创建者 |
 |------|:-:|-----------|
-| `.workflows/config.yml` | 是 | `/spring-boot-workflows:setup` |
+| `.workflows/config.yml` | 是 | `/new-project`（已有项目则用 `/setup`） |
 | `.workflows/<feature>/NN-<phase>.md` | 否 —— `.workflows/*/` 已被 gitignore | 各阶段 |
 | `.workflows/<feature>/plan.md` | 否 —— `.workflows/*/` 已被 gitignore | PLAN 阶段 |
 | `.workflows/current-state.md` | 否 | 阶段切换 |
 | `.workflows/paused-*.md` | 否 | 暂停命令 |
 | `.workflows/history/` | 否 | 完成时 |
-| `.workflows/specs/` | 否 | `/setup`（预留目录） |
+| `.workflows/specs/` | 否 | `/new-project` 与 `/setup`（预留目录） |
 | `.workflows/learned/` | 否 | 学习系统 |
 | `.workflows/templates/<name>/` | 否 | `/template save` |
 | `.workflows/knowledge.jsonl` | 否 | 工作流结束时的决策提取（Rule 16） |
 | `.workflows/telemetry.jsonl` | 否 | 各阶段结束后追加的遥测记录 |
 | `.workflows/history/guard-overrides.log` | 否 | `/guards --force` 的放行留痕 |
+| `CLAUDE.md` | 是 | `/new-project` |
 | `tasks/todo.md` | 是 | `/new-project` 创建；PLAN 阶段追加 |
 | `tasks/lessons.md` | 是 | `/new-project` |
 
@@ -758,7 +822,7 @@ cat $(claude plugin path spring-boot-workflows)/VERSION
 | 状态损坏 | 删除 `.workflows/current-state.md` 后重新开始 |
 | 质量门禁未运行 | 检查 `.workflows/config.yml` 中的 `quality.self_review: true` |
 | 加载了错误的规则 | 检查 `.workflows/config.yml` 中的 `project.type`（`spring-boot` 会加载两份规则文件） |
-| 配置缺失 | 运行 `/spring-boot-workflows:setup` 重新生成 |
+| 配置缺失 | 运行 `/spring-boot-workflows:new-project`（新项目）或 `/spring-boot-workflows:setup`（已有项目）重新生成 |
 
 ### 重置
 

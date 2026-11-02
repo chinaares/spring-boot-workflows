@@ -716,8 +716,8 @@
       <div class="emoji">&#127968;</div>
       <h4>新项目（New Project）</h4>
       <div class="desc">为项目初始化完整的 Claude Code 配置</div>
-      <div class="what"><strong>它做什么：</strong>扫描 Maven/Gradle 构建文件，检测 Spring Boot 主版本与持久化技术栈，再从历史中提取 git 约定。生成 .workflows/config.yml 和 CLAUDE.md，内含构建命令、架构摘要与代码约定。搭好任务跟踪的脚手架。</div>
-      <div class="cmd">/spring-boot-workflows:new-project</div>
+      <div class="what"><strong>它做什么：</strong>扫描 Maven/Gradle 构建文件，检测 Spring Boot 主版本与持久化技术栈，再从历史中提取 git 约定。生成 .workflows/config.yml 和 CLAUDE.md，内含构建命令、架构摘要与代码约定。搭好任务跟踪的脚手架，创建 .workflows/ 子目录，更新 .gitignore，并可生成 CI。对新项目而言它取代 <code>/setup</code>。</div>
+      <div class="cmd">/spring-boot-workflows:new-project [--path &lt;dir&gt;]</div>
     </div>
 
     <div class="wf-item">
@@ -802,7 +802,7 @@
       <div class="emoji">&#128295;</div>
       <h4>初始化（Setup）</h4>
       <div class="desc">让现有项目接入工作流体系</div>
-      <div class="what"><strong>它做什么：</strong>检测构建系统（优先 wrapper）、Spring Boot 主版本、持久化技术栈，创建 <code>.workflows/</code> 目录结构，合成 <code>.workflows/config.yml</code>，并把工作流状态条目写进 <code>.gitignore</code>。<code>--with-guards</code> 可同时生成守卫配置。</div>
+      <div class="what"><strong>它做什么：</strong>检测构建系统（优先 wrapper）、Spring Boot 主版本、持久化技术栈，创建 <code>.workflows/</code> 目录结构，由插件默认值 + 你的 userConfig 合成 <code>.workflows/config.yml</code>，并把工作流状态条目写进 <code>.gitignore</code>。<code>--with-guards</code> 可同时生成守卫配置。全新项目请改用 <code>/new-project</code>。</div>
       <div class="cmd">/spring-boot-workflows:setup [--with-guards]</div>
     </div>
 
@@ -850,7 +850,7 @@
   <div class="path-groups reveal">
     <div class="path-group">
       <div class="g-h">入口 / Entry</div>
-      <div class="path-row"><span class="st">项目还没初始化过</span><span class="sk">/setup</span></div>
+      <div class="path-row"><span class="st">已有项目还没初始化过</span><span class="sk">/setup</span></div>
       <div class="path-row"><span class="st">要开一个全新项目</span><span class="sk">/new-project</span></div>
       <div class="path-row"><span class="st">就是不知道该用哪个</span><span class="sk core">/start</span></div>
       <div class="path-row"><span class="st">中途被打断了</span><span class="sk">/resume</span></div>
@@ -974,15 +974,18 @@
 
     <div class="usage-step">
       <h4>初始化你的项目</h4>
-      <p>运行 setup，检测项目的技术栈并创建 <code>.workflows/</code> 目录结构。</p>
+      <p>全新项目请运行 <code>new-project</code> —— 它会检测技术栈、git 约定与架构，然后写出配置、项目上下文文件和任务脚手架。</p>
       <div class="cmd-block">
-        <span class="cmt"># 在 Claude Code 内</span><br>
-        /spring-boot-workflows:setup<br>
+        <span class="cmt"># 在 Claude Code 内 —— 新项目</span><br>
+        /spring-boot-workflows:new-project<br>
         <br>
-        <span class="cmt"># 或者针对新项目（执行 setup 并生成 CLAUDE.md）：</span><br>
-        /spring-boot-workflows:new-project
+        <span class="cmt"># 指定其他目录，或给一个兜底预设：</span><br>
+        /spring-boot-workflows:new-project --path ../api-service<br>
+        <br>
+        <span class="cmt"># 已有项目只需要补一份配置：</span><br>
+        /spring-boot-workflows:setup
       </div>
-      <div class="expect"><strong>会发生什么：</strong>生成 <code>.workflows/config.yml</code>，其中填入检测到的项目设置（构建系统、语言、git 约定）。同时创建用于工作流状态的历史与学习目录。生成之后你可以自行定制 <code>config.yml</code>。</div>
+      <div class="expect"><strong>会发生什么：</strong>生成 <code>.workflows/config.yml</code>，其中填入检测到的项目设置（构建系统、语言、git 约定），外加 <code>CLAUDE.md</code>、<code>tasks/</code> 与状态目录。生成之后你可以自行定制 <code>config.yml</code>。<strong>不要在 <code>/new-project</code> 之后再跑 <code>/setup</code></strong> —— 两者都会重写配置，而 setup 那份会丢掉探测出的 PR 目标分支。</div>
     </div>
 
     <div class="usage-step">
@@ -1146,7 +1149,7 @@
     <div class="ev-line"><span class="ev-kw">/plugin install</span> <span class="ev-str">spring-boot-workflows</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 3. 初始化你的项目</span></div>
-    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:setup</span></div>
+    <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:new-project</span></div>
     <div class="ev-line">&nbsp;</div>
     <div class="ev-line"><span class="ev-cmt"># 4. 开始构建</span></div>
     <div class="ev-line"><span class="ev-kw">/spring-boot-workflows:start</span></div>
