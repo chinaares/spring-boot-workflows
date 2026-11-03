@@ -26,6 +26,20 @@ const {
   checkMarkers,
 } = require("./lib/render-ci-templates");
 
+/**
+ * Step-name matcher per optional feature. `coverage` and `coverage-gate` both
+ * say "Coverage", so a loose keyword test would report one as the other.
+ */
+const FEATURE_MARKERS = {
+  coverage: (n) => /coverage report/i.test(n),
+  "coverage-gate": (n) => /coverage gate/i.test(n),
+  spotbugs: (n) => /spotbugs/i.test(n),
+  pmd: (n) => /\bpmd\b/i.test(n),
+  checkstyle: (n) => /checkstyle/i.test(n),
+  "dependency-check": (n) => /dependency cve scan/i.test(n),
+  artifact: (n) => /upload jar/i.test(n),
+};
+
 let total = 0;
 let passed = 0;
 let failed = 0;
@@ -158,6 +172,9 @@ function testRenderedWorkflows() {
     }
 
     // --- Feature removal keeps the YAML valid ---
+    // Each feature is identified by its own step-name matcher: `coverage` and
+    // `coverage-gate` both say "Coverage", so a loose keyword test would
+    // report one as the other.
     for (const dropped of OPTIONAL_FEATURES) {
       const without = render(platform.template, { features: ["test"] });
       const withoutParsed = parseYaml(without);
@@ -165,21 +182,13 @@ function testRenderedWorkflows() {
       if (!withoutParsed.ok) continue;
 
       const withoutNames = stepNames(withoutParsed.data);
-      test(`${label}: ${dropped} step removed`, !withoutNames.some(n => new RegExp(dropped, "i").test(n)),
+      test(`${label}: ${dropped} step removed`, !withoutNames.some(FEATURE_MARKERS[dropped]),
         withoutNames.join(", "));
       test(`${label}: test report still present without ${dropped}`,
         withoutNames.some(n => /test report/i.test(n)));
     }
 
     // --- Each feature toggled on alone ---
-    // The artifact step is named "Upload JAR"; identify it by its artifact
-    // name rather than by the feature keyword.
-    const featureMarker = {
-      coverage: n => /coverage/i.test(n),
-      spotbugs: n => /spotbugs/i.test(n),
-      artifact: n => /upload jar/i.test(n),
-    };
-
     for (const feature of OPTIONAL_FEATURES) {
       const withFeature = render(platform.template, { features: ["test", feature] });
       const featureParsed = parseYaml(withFeature);
@@ -187,7 +196,7 @@ function testRenderedWorkflows() {
       if (!featureParsed.ok) continue;
       const featureNames = stepNames(featureParsed.data);
       test(`${label}: ${feature} included when requested`,
-        featureNames.some(featureMarker[feature]),
+        featureNames.some(FEATURE_MARKERS[feature]),
         featureNames.join(", "));
     }
   }
@@ -259,6 +268,40 @@ function testPlaceholderContract() {
   test("settings: all placeholders documented", undocumentedSettings.length === 0, undocumentedSettings.join(", "));
 }
 
+/**
+ * Every feature enabled at once — the widest render. A block that leaks a
+ * step, or two blocks that collide, shows up here and nowhere else.
+ */
+function testAllFeaturesEnabled() {
+  section("All Features Enabled");
+
+  for (const platform of PLATFORMS) {
+    const label = platform.id;
+    const rendered = render(platform.template, { features: OPTIONAL_FEATURES });
+    const parsed = parseYaml(rendered);
+    test(`${label}: valid YAML with every feature`, parsed.ok, parsed.error);
+    if (!parsed.ok) continue;
+
+    const names = stepNames(parsed.data);
+    for (const feature of OPTIONAL_FEATURES) {
+      test(`${label}: ${feature} step present`, names.some(FEATURE_MARKERS[feature]), names.join(", "));
+    }
+    test(`${label}: test report step present`, names.some(n => /test report/i.test(n)), names.join(", "));
+    test(`${label}: no unresolved placeholders`, unresolvedPlaceholders(rendered).length === 0,
+      unresolvedPlaceholders(rendered).join(", "));
+  }
+
+  // The dependency-check step reads the NVD key from a repository secret —
+  // the template must not hard-code a value.
+  for (const platform of PLATFORMS) {
+    const rendered = render(platform.template, { features: OPTIONAL_FEATURES });
+    test(
+      `${platform.id}: dependency-check reads NVD_API_KEY from secrets`,
+      /NVD_API_KEY:\s*\$\{\{\s*secrets\.NVD_API_KEY\s*\}\}/.test(rendered),
+    );
+  }
+}
+
 // ============================================================
 // Run
 // ============================================================
@@ -269,6 +312,7 @@ console.log("+" + "=".repeat(58) + "+");
 testRenderedWorkflows();
 testSettingsTemplate();
 testPlaceholderContract();
+testAllFeaturesEnabled();
 
 console.log(`\n${"=".repeat(60)}`);
 console.log("  RESULTS");

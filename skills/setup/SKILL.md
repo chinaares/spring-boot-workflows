@@ -83,7 +83,7 @@ After writing `.workflows/config.yml`, validate the generated config:
 5. Verify `project.spring.boot_major` is one of: `3`, `4` (only when `project.type` is `spring-boot`)
 6. Verify `ci.platform` is one of: `auto`, `github`, `gitea`, `both`
 7. Verify `ci.mirror` is one of: `none`, `aliyun`, `tsinghua`
-8. Verify every `ci.features` entry is one of: `test`, `coverage`, `spotbugs`, `artifact`
+8. Verify every `ci.features` entry is one of: `test`, `coverage`, `coverage-gate`, `spotbugs`, `pmd`, `checkstyle`, `dependency-check`, `artifact`
 
 If any validation fails, warn the user and offer to fix. Do not block setup for warnings.
 

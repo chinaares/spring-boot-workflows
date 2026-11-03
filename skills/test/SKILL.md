@@ -110,7 +110,12 @@ Verify new tests don't break existing tests.
 Each test: tests ONE behavior, uses Given/When/Then naming, mocks only outside boundary, is deterministic, tests behavior not implementation details.
 
 ### 4.4 Coverage
-Run coverage tool if available. Compare against target from `--coverage` flag or `workflows.test.default_coverage` in config.
+Compare against the target from the `--coverage` flag or `workflows.test.default_coverage` in config.
+
+Produce the number with a real command, never an estimate:
+- **Maven** — if `jacoco-maven-plugin` is declared: `./mvnw -B jacoco:report`, then read `target/site/jacoco/jacoco.xml` and compute `covered / (covered + missed) × 100` from the **report-level** `<counter>` elements (direct children of `<report>` — summing the per-class counters double-counts).
+- **Gradle** — `./gradlew jacocoTestReport`, then read `build/reports/jacoco/test/jacocoTestReport.xml`.
+- No coverage plugin in the build → report coverage as **not measured**, and name the plugin that would provide it. Do not report "0%" and do not present an unmeasured result as a pass.
 
 **>> Phase complete** — write output to `.workflows/<target>/04-verify.md`.
 

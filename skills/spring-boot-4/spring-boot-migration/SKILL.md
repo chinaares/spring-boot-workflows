@@ -23,8 +23,12 @@ Use this skill for phased upgrade work on existing Spring Boot applications. Thi
 Use the migration scanner before planning or editing. It reads `pom.xml`, `build.gradle`, or `build.gradle.kts` (whichever the project has) plus Java sources, properties files, and Flyway migrations:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/scan_migration_issues.py" /path/to/project
+python3 "<plugin-root>/scripts/scan_migration_issues.py" /path/to/project
 ```
+
+The scanner lives at the plugin root, next to `session-start-state.sh` — there is
+exactly one copy, so the `/migrate` and `/diagnose` workflows and this skill
+always report the same findings.
 
 Use the scan output to identify:
 
@@ -105,7 +109,7 @@ After each phase, report:
 
 ## Available script
 
-- `scripts/scan_migration_issues.py`
+- `<plugin-root>/scripts/scan_migration_issues.py`
 
 ## Output format
 

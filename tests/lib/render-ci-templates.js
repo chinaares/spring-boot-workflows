@@ -33,7 +33,15 @@ const FIXTURE_VALUES = {
 };
 
 /** Features that can be toggled via the optional-block markers. */
-const OPTIONAL_FEATURES = ["coverage", "spotbugs", "artifact"];
+const OPTIONAL_FEATURES = [
+  "coverage",
+  "coverage-gate",
+  "spotbugs",
+  "pmd",
+  "checkstyle",
+  "dependency-check",
+  "artifact",
+];
 
 /**
  * Replace the documented placeholders only. A blanket regex would corrupt the

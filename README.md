@@ -1,15 +1,17 @@
 # spring-boot-workflows
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](VERSION)
 
 **Spring Boot development workflows for Claude Code — structured feature delivery, proportional quality gates, multi-session state, and Spring-specific rules.**
 
 `spring-boot-workflows` is the **claude-workflows** orchestration engine specialized for
-Java/Spring projects. It keeps the workflow engine intact — 24 phase-driven skills, 18
+Java/Spring projects. It keeps the workflow engine intact — 25 phase-driven skills, 18
 orchestration rules, persistent state, proportional review gates — and replaces the
 multi-language asset set with a Spring Boot one: Java coding rules, Spring Boot coding
-rules, Spring-specific review checklists, and 27 vendored Spring Boot domain skills
-covering JPA, REST, security, migrations, transactions, and testing.
+rules, Spring-specific review checklists, 27 vendored Spring Boot domain skills
+covering JPA, REST, security, migrations, transactions, and testing, and a full
+verification loop that actually executes the build, the analyzers, the tests, and the
+coverage gate before a PR is opened.
 
 ---
 
@@ -44,6 +46,21 @@ claude plugin configure spring-boot-workflows
 ```
 
 > **Repository**: [github.com/chinaares/spring-boot-workflows](https://github.com/chinaares/spring-boot-workflows)
+
+### Upgrading from 1.0.x
+
+`claude plugin update spring-boot-workflows` refreshes the installed copy, but it does
+**not** rewrite a project's `.workflows/config.yml` or `.workflows/guards.yml`. Blocks
+that changed shape in 1.1.0:
+
+| File | What changed | Action |
+|---|---|---|
+| `config.yml` | `workflows.review.size_thresholds` is now `light` / `standard`; `small` / `medium` / `large` are **not** gate levels | Re-run `/setup`, or edit the block |
+| `config.yml` | `context_thresholds` and the `verify:` block are new | Re-run `/setup` to add them |
+| `guards.yml` | `strict` and `token_patterns` are new | Run `/guards init`; it offers to add only the missing keys and keeps your patterns |
+
+Rule 3 falls back to the plugin defaults when the new keys are absent, so an old config
+keeps working — it just will not use the new gate levels until it is migrated.
 
 ---
 
@@ -98,7 +115,7 @@ checks. Unlike `/setup --with-guards`, it leaves `config.yml` untouched.
 
 All skills are namespaced under `spring-boot-workflows`.
 
-### Workflow skills (24)
+### Workflow skills (25)
 
 | Skill | Command | Description |
 |-------|---------|-------------|
@@ -116,6 +133,7 @@ All skills are namespaced under `spring-boot-workflows`.
 | Brainstorm | `/spring-boot-workflows:brainstorm` | 5 structured brainstorming techniques |
 | Scope | `/spring-boot-workflows:scope` | Analyze task complexity before choosing a workflow |
 | Test | `/spring-boot-workflows:test` | Generate tests with coverage analysis |
+| Verify | `/spring-boot-workflows:verify` | Full verification loop — build, static analysis, tests, coverage gate, CVE scan, diff review |
 | Retrospective | `/spring-boot-workflows:retrospective` | Analyze workflow history for improvements |
 | Learn | `/spring-boot-workflows:learn` | Capture and reuse workflow patterns |
 | Metrics | `/spring-boot-workflows:metrics` | Workflow execution analytics |
@@ -215,6 +233,8 @@ detected value.
 - **Git flow**: branch naming patterns, commit format, PR settings, merge strategy
 - **Workflow behavior**: require/skip brainstorm, tests, spec; plan phase limits
 - **Quality gates**: proportional review scaling, checklist selection
+- **Verification**: `verify.checks`, coverage threshold and scope, static analyzers, CVE and secret scans, findings file
+- **Guards**: `guards.enabled` (run a guard scan before commit/push), `guards.strict`
 - **Spring**: `project.spring.boot_major`, `build_tool`, `persistence`
 - **Telemetry**: opt-in execution metrics
 - **Skill aliases**: custom command shortcuts
@@ -235,12 +255,55 @@ detected value.
 
 | Change Size | Gate Level |
 |-------------|-----------|
-| 1-3 files, ≤50 lines | **Light**: Critical security checks only |
+| 1-3 files, ≤50 lines | **Light**: Critical items from the general checklist only; language-specific checklists skipped |
 | 4-15 files | **Standard**: General + Spring checklists (High/Critical) |
 | More than 15 files | **Full**: All checklists, all severity levels |
 
 All Critical/High severity items must pass before the PR is created, each with explicit
 evidence (`PASS:` / `FAIL:` / `N/A:`).
+
+The thresholds live in `workflows.review.size_thresholds` in `.workflows/config.yml` —
+that block is the single source of truth, read by both Rule 3 and the `review` skill.
+
+---
+
+## Verification Loop
+
+The checklist gate above is a judgement. `/verify` is an **execution** — it runs the
+build, the analyzers, the tests, and the coverage gate, and reports the numbers.
+
+```text
+/spring-boot-workflows:verify              # full loop
+/spring-boot-workflows:verify --quick      # build + test + coverage only
+/spring-boot-workflows:verify --strict     # warnings fail the gate
+```
+
+Seven phases: **DETECT → BUILD → STATIC → TEST → SECURITY → DIFF → REPORT**
+
+| Phase | What it runs | Configured by |
+|---|---|---|
+| DETECT | Build tool, wrapper, declared quality plugins, thresholds, diff base | `verify.checks` |
+| BUILD | `mvn clean verify -DskipTests` — compile and package | — |
+| STATIC | `spotbugs:check`, `pmd:check`, `checkstyle:check` | `verify.static_analysis`, `verify.static_fail_on` |
+| TEST | Full suite + **JaCoCo coverage gate** against `verify.coverage_threshold` | `verify.coverage_threshold`, `verify.coverage_scope` |
+| SECURITY | OWASP dependency CVE scan + credential scan | `verify.dependency_scan`, `verify.secret_scan` |
+| DIFF | Heuristic review of the changed lines | — |
+| REPORT | Human report + machine-readable `findings.json` | `verify.findings_file` |
+
+**A check whose plugin is missing from the build file is reported `SKIPPED`, never
+`PASS`** — and the report names the plugin to add. The coverage gate parses the
+JaCoCo report and compares the number against the threshold, so it works on any
+project that has JaCoCo — it does not need a `<rules>` block in the POM.
+
+Output lands in `.workflows/verify/`: `report.md` for humans, `findings.json` for
+anything that wants to re-gate or aggregate the results. Every check records one status
+(`PASS` / `FAIL` / `SKIPPED` / `ERROR`), and a `SKIPPED` check must carry
+`skipped_reason`. When another workflow is already active, the artifacts go into that
+workflow's output directory as `verify-report.md` / `verify-findings.json` instead.
+
+`/verify` runs automatically as part of the PR phase of `/new-feature`, and
+`/ci-setup` can generate the same checks as CI steps (`coverage`, `coverage-gate`,
+`spotbugs`, `pmd`, `checkstyle`, `dependency-check`).
 
 ---
 

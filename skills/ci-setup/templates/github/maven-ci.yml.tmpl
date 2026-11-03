@@ -64,10 +64,32 @@ jobs:
           retention-days: 7
       # <<< optional:coverage
 
+      # >>> optional:coverage-gate
+      - name: Coverage Gate (JaCoCo check)
+        run: {MAVEN_CMD} -B jacoco:check {MAVEN_ARGS}
+      # <<< optional:coverage-gate
+
       # >>> optional:spotbugs
       - name: Static Analysis (SpotBugs)
         run: {MAVEN_CMD} -B spotbugs:check {MAVEN_ARGS}
       # <<< optional:spotbugs
+
+      # >>> optional:pmd
+      - name: Static Analysis (PMD)
+        run: {MAVEN_CMD} -B pmd:check {MAVEN_ARGS}
+      # <<< optional:pmd
+
+      # >>> optional:checkstyle
+      - name: Static Analysis (Checkstyle)
+        run: {MAVEN_CMD} -B checkstyle:check {MAVEN_ARGS}
+      # <<< optional:checkstyle
+
+      # >>> optional:dependency-check
+      - name: Dependency CVE Scan (OWASP Dependency-Check)
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: {MAVEN_CMD} -B org.owasp:dependency-check-maven:check {MAVEN_ARGS}
+      # <<< optional:dependency-check
 
       # >>> optional:artifact
       - name: Upload JAR

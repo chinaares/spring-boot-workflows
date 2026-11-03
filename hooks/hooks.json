@@ -21,7 +21,25 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Check if .workflows/current-state.md exists with an active workflow. If so, verify a quality gate was run by checking for review/checklist mentions in the workflow's output directory files. If NOT found, warn: 'Quality gate not detected — load review checklists and self-check High/Critical items before creating the PR.' This is a warning, not a block — the user can proceed if they choose."
+            "prompt": "Check if .workflows/current-state.md exists with an active workflow. If so, verify a quality gate was run by checking for review/checklist mentions in the workflow's output directory files, or for a findings.json produced by the verify or review skill. If NOT found, warn: 'Quality gate not detected — load review checklists and self-check High/Critical items before creating the PR.' This is a warning, not a block — the user can proceed if they choose."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(tea pr create*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check if .workflows/current-state.md exists with an active workflow. If so, verify a quality gate was run by checking for review/checklist mentions in the workflow's output directory files, or for a findings.json produced by the verify or review skill. If NOT found, warn: 'Quality gate not detected — load review checklists and self-check High/Critical items before creating the PR.' This is a warning, not a block — the user can proceed if they choose."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(gh api *pulls*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A pull request is about to be created through the GitHub API. Check if .workflows/current-state.md exists with an active workflow. If so, verify a quality gate was run by checking for review/checklist mentions in the workflow's output directory files, or for a findings.json produced by the verify or review skill. If NOT found, warn: 'Quality gate not detected — load review checklists and self-check High/Critical items before creating the PR.' This is a warning, not a block — the user can proceed if they choose."
           }
         ]
       }

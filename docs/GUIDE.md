@@ -27,7 +27,7 @@ A **portable, spec-driven development workflow system** for Claude Code AI agent
 
 **Core Principles**: Spec before code. Brainstorm before plan. Plan before implement. State persists across sessions. Quality gate before every PR. Spring-aware (build/test commands and the Boot major version auto-detected). Configurable git flow.
 
-**What You Get**: 24 workflow skills (as plugin slash commands), 27 vendored Spring Boot domain skills, 5 brainstorming techniques, 18 orchestration rules enforced on every execution, review checklists (general + Java + Spring Boot), Java/Spring coding rules, multi-session persistence, and a single YAML config file.
+**What You Get**: 25 workflow skills (as plugin slash commands), 27 vendored Spring Boot domain skills, 5 brainstorming techniques, 18 orchestration rules enforced on every execution, review checklists (general + Java + Spring Boot), Java/Spring coding rules, a verification loop that actually runs the build, and a single YAML config file.
 
 ---
 
@@ -204,6 +204,8 @@ ci:
   runner: "ubuntu-latest"
   mirror: "none"                     # none | aliyun | tsinghua
   features: [test, coverage, artifact]
+  # test | coverage | coverage-gate | spotbugs | pmd | checkstyle
+  # | dependency-check | artifact
 
 workflows:
   new-feature:
@@ -230,7 +232,10 @@ workflows:
     tag_format: "v{version}"
   review:
     checklist: "auto"                # auto | none | <path>
-    size_thresholds: { small: 10, medium: 30, large: 50 }
+    size_thresholds:                 # gate level — single source of truth
+      light: { max_files: 3, max_lines: 50 }
+      standard: { max_files: 15 }
+    context_thresholds: { small: 10, medium: 30 }   # how much the review reads up front
   test:
     default_coverage: 90
     default_type: "unit"
@@ -255,7 +260,8 @@ chains: {}
   # hotfix: "ci-fix --pr latest"
 
 guards:
-  enabled: false
+  enabled: false                     # master switch for automatic guard scans
+  strict: false                      # true = a WARN finding also blocks the operation
   config: ".workflows/guards.yml"
 
 learning:
@@ -267,6 +273,16 @@ quality:
   self_review: true
   focused_gate: true
   proportional: true
+
+verify:                              # the /verify execution loop
+  checks: [build, static, test, coverage, security, diff]
+  coverage_threshold: 80             # percent
+  coverage_scope: line               # line | branch
+  static_analysis: [spotbugs, pmd, checkstyle]
+  static_fail_on: error              # error | warning
+  dependency_scan: true              # OWASP dependency-check — slow, needs network + NVD key
+  secret_scan: true
+  findings_file: "findings.json"
 
 progress:
   visual: true                       # write a Mermaid progress diagram into the state file
@@ -284,7 +300,7 @@ telemetry:
 
 ## 4. Recommended Paths: Choosing a Skill by Project State
 
-The plugin ships 24 workflow skills. They are not 24 equal choices — together they cover the whole chain from "figure out what to build" to "ship it". This section picks a skill based on **the state your project is in right now**.
+The plugin ships 25 workflow skills. They are not 25 equal choices — together they cover the whole chain from "figure out what to build" to "ship it". This section picks a skill based on **the state your project is in right now**.
 
 ### 4.1 Ask Three Questions First
 
@@ -461,11 +477,58 @@ Critical and High severity violations must be fixed before the PR is created. Th
 
 Every Critical item needs an **explicit verdict** (`PASS: <item> — <evidence>` / `FAIL: <item> — <issue> — <fix>` / `N/A: <item> — <reason>`). "Checked, no issues found" is not evidence.
 
+The thresholds above live in `workflows.review.size_thresholds` in `.workflows/config.yml` — that block is the single source of truth, read by both Rule 3 and the `review` skill.
+
+```yaml
+workflows:
+  review:
+    size_thresholds:
+      light: { max_files: 3, max_lines: 50 }
+      standard: { max_files: 15 }
+    context_thresholds: { small: 10, medium: 30 }
+```
+
+`context_thresholds` is a separate concern: it controls how much the `review` skill reads up front, not which severity levels the gate requires. A config written by an older plugin may still carry `size_thresholds: { small: 10, medium: 30, large: 50 }` — those are **not** gate levels. Rule 3 reads the `light`/`standard` keys and falls back to the plugin defaults when they are absent; re-run `/setup` (or edit the block) to adopt the current shape.
+
 ```yaml
 quality:
   self_review: true      # self-check the checklists before a PR
   focused_gate: true     # weight checks by changed file category
   proportional: true     # gate level scales with the change size
+```
+
+### The Verification Loop (`/verify`)
+
+The checklist gate is a judgement. `/verify` is an **execution** — it runs the build, the analyzers, the tests, and the coverage gate, and reports the numbers.
+
+Seven phases: **DETECT → BUILD → STATIC → TEST → SECURITY → DIFF → REPORT**
+
+| Phase | What it runs |
+|---|---|
+| DETECT | Build tool, wrapper, declared quality plugins, thresholds, diff base |
+| BUILD | `mvn clean verify -DskipTests` — compile and package |
+| STATIC | `spotbugs:check`, `pmd:check`, `checkstyle:check` |
+| TEST | Full suite + JaCoCo coverage gate against `verify.coverage_threshold` |
+| SECURITY | OWASP dependency CVE scan + credential scan |
+| DIFF | Heuristic review of the changed lines |
+| REPORT | Human report (`report.md`) + machine-readable `findings.json` |
+
+A check whose plugin is missing from the build file is reported **`SKIPPED`, never `PASS`** — and the report names the plugin to add. The coverage gate parses the JaCoCo report and compares it against the threshold, so it works on any project that has JaCoCo, with no `<rules>` block in the POM.
+
+Output lands in `.workflows/verify/`: `report.md` for humans and `findings.json` (`schema: spring-boot-workflows/verify-findings@1`) for anything that re-gates or aggregates results. Every check records one status — `PASS`, `FAIL`, `SKIPPED`, or `ERROR` — and a `SKIPPED` check must carry a `skipped_reason`; a skipped check is never a pass. When another workflow is active, the artifacts are written into that workflow's output directory as `verify-report.md` / `verify-findings.json` instead.
+
+`/new-feature` runs it automatically in its PR phase; `/ci-setup` can generate the same checks as CI steps.
+
+```yaml
+verify:
+  checks: [build, static, test, coverage, security, diff]
+  coverage_threshold: 80   # percent
+  coverage_scope: line     # line | branch
+  static_analysis: [spotbugs, pmd, checkstyle]
+  static_fail_on: error    # error | warning
+  dependency_scan: true    # OWASP dependency-check — slow, needs network + NVD key
+  secret_scan: true
+  findings_file: "findings.json"
 ```
 
 ---
@@ -489,8 +552,9 @@ All commands are namespaced under `spring-boot-workflows:`.
 | `/spring-boot-workflows:hotfix <description> [--crashlytics <issue-id>] [--log <path>] [--branch <production-branch>]` | Emergency production fix |
 | `/spring-boot-workflows:diagnose <symptom> [--error <message>] [--file <path>] [--since <commit-or-date>]` | Systematic bug investigation (localizes only, does not fix) |
 | `/spring-boot-workflows:ci-fix [--run <run-id>] [--pr <pr-number>] [--platform github\|gitea]` | Fix CI/CD failures |
-| `/spring-boot-workflows:ci-setup [--platform github\|gitea\|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun\|tsinghua\|none] [--skip-it] [--dry-run]` | Generate GitHub/Gitea Actions CI workflows |
+| `/spring-boot-workflows:ci-setup [--platform github\|gitea\|both] [--features test,coverage,coverage-gate,spotbugs,pmd,checkstyle,dependency-check,artifact] [--java <version>] [--runner <label>] [--mirror aliyun\|tsinghua\|none] [--skip-it] [--dry-run]` | Generate GitHub/Gitea Actions CI workflows |
 | `/spring-boot-workflows:test <target> [--coverage <pct>] [--type unit\|integration]` | Generate tests with coverage |
+| `/spring-boot-workflows:verify [--quick] [--strict] [--base <branch>] [--skip <check>] [--dependency-scan] [--dry-run]` | Run the full verification loop — build, static analysis, tests, coverage gate, CVE scan, diff review |
 | `/spring-boot-workflows:review <pr-number> [--strict] [--focus <area>]` | Review a pull request |
 | `/spring-boot-workflows:release <version> [--type major\|minor\|patch]` | Prepare a versioned release |
 | `/spring-boot-workflows:git-flow branch <type> <name>` \| `commit <message>` \| `pr [--base <branch>]` \| `merge <branch>` | Git branch/commit/PR/merge operations |
@@ -600,7 +664,7 @@ Fetches failure details via `gh`, classifies (compile/test/lint/dependency/confi
 ### CI Setup
 
 ```text
-/spring-boot-workflows:ci-setup [--platform github|gitea|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun|tsinghua|none] [--skip-it] [--dry-run]
+/spring-boot-workflows:ci-setup [--platform github|gitea|both] [--features test,coverage,coverage-gate,spotbugs,pmd,checkstyle,dependency-check,artifact] [--java <version>] [--runner <label>] [--mirror aliyun|tsinghua|none] [--skip-it] [--dry-run]
 ```
 
 Detects platform, build system, Java version, and quality tooling, then generates test, coverage, static-analysis, and artifact-upload steps. It validates GitHub vs Gitea differences in context namespaces and Action URLs, and keeps the Maven cache path consistent with the real local repository.
@@ -647,7 +711,7 @@ These six improve the **process itself**, not the code.
 
 | Skill | Command | What it does |
 |---|---|---|
-| **Guards** | `init` / `check [--staged] [--force]` / `report` | Scans files against `.workflows/guards.yml`: hardcoded tokens (`AKIA`, `sk-`, `ghp_`, `Bearer`, private keys, JWTs), protected paths, and dangerous commands like `rm -rf`. `BLOCK` stops the operation, `WARN` only advises. `--force` logs the override to `.workflows/history/guard-overrides.log` |
+| **Guards** | `init` / `check [--staged] [--force]` / `report` | Scans files against `.workflows/guards.yml`: hardcoded tokens (`AKIA`, `sk-`, `ghp_`, `Bearer`, private keys, JWTs), protected paths, and dangerous commands like `rm -rf`. `block_patterns` / `warn_patterns` / `token_patterns` are **POSIX ERE regex matched against file content line by line**; `protected_paths` / `no_commit_patterns` are **shell globs matched against file paths** — `*.env` works in a glob list but matches nothing in a regex list. `BLOCK` stops the operation, `WARN` only advises unless `guards.strict` is true; a matched credential value is never echoed. `--force` logs the override to `.workflows/history/guard-overrides.log`. `init` detects a pre-1.1 config (missing `strict` or `token_patterns`) and offers to add only the missing keys, keeping the project's own patterns |
 | **Template** | `save <name>` / `list` / `use <name> <feature>` | Saves a completed workflow's spec + plan as a template with a `{feature}` placeholder. `use` pre-fills the spec and plan and continues from the **PLAN** phase, marking GATHER/SPEC/BRAINSTORM as SKIPPED |
 | **Learn** | `capture` / `list` / `apply <topic>` | Extracts reusable patterns (architecture decisions, implementation idioms, test strategies) from completed workflows and stores them tagged in `.workflows/learned/`. Patterns used 2+ times are marked validated and surface automatically in later brainstorms |
 | **Metrics** | `/` / `<workflow-name>` / `trends` | Reads the telemetry data (JSON lines appended after each phase) and shows completion rate, average duration, and bottleneck phases. `trends` compares the last 10 workflows against the previous 10 to show speed changes and REPLAN frequency |
@@ -757,7 +821,7 @@ These files ship with the plugin and are loaded automatically. They are **not** 
 
 | Path (relative to plugin root) | Purpose |
 |-------------------------------|---------|
-| `skills/*/SKILL.md` | 25 files: 24 workflow skills + the `spring-context` router (auto-discovered) |
+| `skills/*/SKILL.md` | 26 files: 25 workflow skills + the `spring-context` router (auto-discovered) |
 | `skills/_orchestration/RULES.md` | Global orchestration rules |
 | `templates/*.tmpl` | 6 templates (spec, plan, state, skill, changelog, guards.yml) |
 | `rules/*.md` | Java and Spring Boot coding rules |

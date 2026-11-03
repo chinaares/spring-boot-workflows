@@ -30,8 +30,11 @@ locations and test annotations (`tools.jackson.*` vs `com.fasterxml.jackson.*`,
 Loading the wrong set produces code that compiles against the wrong APIs — guessing is
 worse than asking. See Rule 4 for how the version is detected.
 
-Boot 3 projects get only the six `-boot3` skills; for topics outside that set, fall back to
-the Boot 4 skill and read only the parts that are version-neutral.
+Boot 3 projects get only the eight `-boot3` skills (`configuration-properties-boot3`,
+`flyway-migrations-boot3`, `multi-module-maven-boot3`, `oauth2-resource-server-boot3`,
+`rest-api-conventions-boot3`, `spring-data-jpa-boot3`, `spring-security-jwt-boot3`,
+`testing-pyramid-boot3`); for topics outside that set, fall back to the Boot 4 skill and
+read only the parts that are version-neutral.
 
 ## Step 2: Classify the changed files
 

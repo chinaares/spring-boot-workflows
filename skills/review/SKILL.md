@@ -44,10 +44,13 @@ Fetch the PR data using the platform's CLI:
 
 On Gitea, `tea pr` does not return a raw diff — fetch the diff locally with `git fetch origin <base> && git diff <base>...HEAD`.
 
-**Context loading strategy** — do NOT read every file in full:
-- **Small PRs** (≤10 files): Read each changed file in full for context
-- **Medium PRs** (11-30 files): Read files only when checking them in Phase 3
-- **Large PRs** (>30 files): Warn PR should be split. Read files per-category during CHECK.
+**Context loading strategy** — do NOT read every file in full. Read the bounds
+from `workflows.review.context_thresholds` in `.workflows/config.yml` (fall back
+to `<plugin-root>/config/defaults.yml`); the shipped defaults are
+`{ small: 10, medium: 30 }`:
+- **Small PRs** (≤ `small` files): Read each changed file in full for context
+- **Medium PRs** (`small`+1 to `medium` files): Read files only when checking them in Phase 3
+- **Large PRs** (> `medium` files): Warn PR should be split. Read files per-category during CHECK.
 
 **>> Phase complete** — write output to `.workflows/<pr-name>/01-fetch.md`
 
@@ -71,11 +74,52 @@ Summarize file counts per category with additions/deletions.
 
 **Goal**: Review each file against quality checklists.
 
-**Load checklists**: General checklist + language-specific (from `project.language`). If a team is configured, also load `<plugin-root>/teams/<team>/reviews/team-review-checklist.md`. No checklists found → use fallback checks (architecture, code quality, security, performance, test coverage, consistency).
+**Load checklists**: read `workflows.review.checklist` from `.workflows/config.yml` (fall back to `<plugin-root>/config/defaults.yml`):
+
+| Value | Checklists |
+|---|---|
+| `auto` (default) | General checklist + language-specific (from `project.language`). If a team is configured, also load `<plugin-root>/teams/<team>/reviews/team-review-checklist.md`. |
+| `none` | No checklist files — use the fallback checks (architecture, code quality, security, performance, test coverage, consistency). |
+| `<path>` | Only that checklist file. |
+
+No checklists found → use the same fallback checks as `none`.
+
+**Gate level**: read `workflows.review.size_thresholds` from config and apply
+Rule 3's proportional table (Light / Standard / Full). The config block is the
+single source of truth — do not hardcode the bounds here. When
+`quality.proportional` is `false`, use the Full gate regardless of size.
 
 **Apply focus**: If `--focus` provided, weight matching violations higher. Still run all checks.
 
 **Execute**: For each changed file, check applicable items. Record violations with: severity (Critical/High/Medium/Low), file+line, issue, actionable suggestion.
+
+**Structured output**: also write `.workflows/<pr-name>/findings.json` so the
+findings can be re-gated, aggregated, or consumed by another tool. Same schema
+as the verification loop (`spring-boot-workflows/verify-findings@1`):
+
+```json
+{
+  "schema": "spring-boot-workflows/verify-findings@1",
+  "generated_at": "2026-11-03T10:22:31Z",
+  "pr": "42",
+  "overall": "REQUEST_CHANGES",
+  "checks": [{ "id": "review", "status": "FAIL", "detail": "2 Critical, 1 High" }],
+  "findings": [
+    {
+      "id": "review",
+      "severity": "critical",
+      "file": "src/main/java/com/example/OrderService.java",
+      "line": 42,
+      "message": "Raw exception message returned in the response body",
+      "fix": "Return a Problem Details body; log the message instead"
+    }
+  ]
+}
+```
+
+`status` is one of `PASS`, `FAIL`, `SKIPPED`, `ERROR`; `severity` is one of
+`critical`, `high`, `medium`, `low`. The file is written even when there are no
+findings — an empty `findings` array is a result, not a missing file.
 
 **>> Phase complete** — write output to `.workflows/<pr-name>/03-check.md`
 

@@ -46,11 +46,19 @@ git:
 
 ci:
   platform: "auto"          # auto | github | gitea | both
-  java_versions: [25]       # workflow JDK version(s)
+  java_versions: [25]       # list, but phase 1 renders ONE JDK — the first entry
   runner: "ubuntu-latest"
   mirror: "none"            # none | aliyun | tsinghua (writes .mvn/settings.xml)
-  features: [test, coverage, artifact]  # test | coverage | spotbugs | artifact
-  # Docker, SSH deploy, Gradle, and JDK-source variants are phase 2 — see TODO.md.
+  features: [test, coverage, artifact]
+  # test | coverage | coverage-gate | spotbugs | pmd | checkstyle | dependency-check | artifact
+  #
+  # A feature whose Maven plugin is not declared in the project's pom.xml is
+  # dropped with a warning — never emitted as a step that always fails.
+  # `coverage-gate` additionally requires jacoco <rules> in the pom; without it
+  # `jacoco:check` passes trivially, so the block is dropped and the coverage
+  # number is reported instead.
+  #
+  # Docker, SSH deploy, Gradle, and the JDK matrix are phase 2 — see TODO.md.
 
 workflows:
   new-feature:
@@ -75,7 +83,15 @@ workflows:
     tag_format: "v{version}"
   review:
     checklist: "auto"      # auto | none | <path>
-    size_thresholds: { small: 10, medium: 30, large: 50 }
+    # Gate level — the single source of truth for the proportional quality gate.
+    # Read by rule-03 and by the `review` skill; keep rule-03's table and this
+    # block in sync (tests/validate-workflows.js asserts it).
+    size_thresholds:
+      light: { max_files: 3, max_lines: 50 }
+      standard: { max_files: 15 }
+    # How much context the review skill reads up front (Phase 1). Separate from
+    # the gate level above — this one is about reading strategy, not severity.
+    context_thresholds: { small: 10, medium: 30 }
   migrate:
     require_brainstorm: true
   test:
@@ -102,7 +118,8 @@ chains: {}
   # hotfix: "ci-fix --pr latest"
 
 guards:
-  enabled: false
+  enabled: false           # master switch — when true, commit/push paths run a guard scan
+  strict: false            # when true, a WARN finding also blocks the operation
   config: ".workflows/guards.yml"
 
 learning:
@@ -111,9 +128,21 @@ learning:
   knowledge_graph: true
 
 quality:
-  self_review: true
-  focused_gate: true
-  proportional: true
+  self_review: true        # rule-03: the agent self-checks before reporting done
+  focused_gate: true       # rule-13: apply the focused-gate weighting
+  proportional: true       # rule-03: scale the gate to the change size
+
+verify:
+  # The verification loop (/verify). Every check is opt-out; a check whose
+  # plugin is missing from the build file is reported SKIPPED, never PASS.
+  checks: [build, static, test, coverage, security, diff]
+  coverage_threshold: 80  # percent
+  coverage_scope: line    # line | branch
+  static_analysis: [spotbugs, pmd, checkstyle]
+  static_fail_on: error   # error | warning
+  dependency_scan: true   # OWASP dependency-check — slow, needs network + NVD key
+  secret_scan: true
+  findings_file: "findings.json"
 
 progress:
   visual: true

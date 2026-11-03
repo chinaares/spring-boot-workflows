@@ -423,7 +423,7 @@
     </div>
     <div class="p-card solution">
       <div class="icon">&#128161;</div>
-      <h3>24 Specialized Workflows</h3>
+      <h3>25 Specialized Workflows</h3>
       <p>Hotfixes are fast and minimal. Features are thorough. Refactors have behavioral contracts. Each workflow is purpose-built for its task.</p>
     </div>
   </div>
@@ -447,7 +447,7 @@
         and executes each phase in order, writing output documents and updating state along the way.
       </p>
       <ul class="check">
-        <li>24 skills covering the full dev lifecycle</li>
+        <li>25 skills covering the full dev lifecycle</li>
         <li>27 Spring Boot domain skills (JPA, REST, security, Flyway, testing) loaded on demand by the spring-context router</li>
         <li>Each skill has 3-8 phases with approval gates</li>
         <li>Phase outputs persist as markdown for context recovery</li>
@@ -820,6 +820,15 @@
       <div class="desc">Reconnect an interrupted workflow across sessions</div>
       <div class="what"><strong>What it does:</strong> Locates the state file, parses and validates it, reloads the key decisions from the Context section plus the spec and plan, reports the current phase and progress, then continues precisely from the break. A REPLAN triggered by three failed builds can also be picked up here.</div>
       <div class="cmd">/spring-boot-workflows:resume</div>
+    </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128269;</div>
+      <h4>Verify</h4>
+      <div class="desc">Run the full gate &mdash; build, analyzers, tests, coverage, CVEs</div>
+      <div class="what"><strong>What it does:</strong> Seven phases &mdash; DETECT, BUILD, STATIC, TEST, SECURITY, DIFF, REPORT. Runs SpotBugs/PMD/Checkstyle, the whole test suite, and a JaCoCo coverage gate computed from the report, then an OWASP dependency CVE scan, a credential scan, and a heuristic diff review. A check whose plugin is missing from the build file is reported <strong>SKIPPED, never PASS</strong>. Writes a human report plus a machine-readable <code>findings.json</code>.</div>
+      <div class="cmd">/spring-boot-workflows:verify [--quick] [--strict]</div>
+      <span class="wf-tag new">NEW</span>
     </div>
   </div>
 </section>

@@ -423,7 +423,7 @@
     </div>
     <div class="p-card solution">
       <div class="icon">&#128161;</div>
-      <h3>24 个专用工作流</h3>
+      <h3>25 个专用工作流</h3>
       <p>紧急修复快速而克制，新功能严谨而完整，重构有行为契约兜底。每个工作流都为它的任务量身打造。</p>
     </div>
   </div>
@@ -447,7 +447,7 @@
         按顺序执行每个阶段，同时写出产出文档并更新状态。
       </p>
       <ul class="check">
-        <li>24 个技能，覆盖完整的开发生命周期</li>
+        <li>25 个技能，覆盖完整的开发生命周期</li>
         <li>27 个 Spring Boot 领域技能（JPA、REST、安全、Flyway、测试），由 spring-context 路由按需加载</li>
         <li>每个技能含 3-8 个阶段，并设有审批门</li>
         <li>阶段产物以 markdown 持久化，便于恢复上下文</li>
@@ -618,7 +618,7 @@
 <!-- ════════════════════════════ ALL WORKFLOWS ════════════════════════════ -->
 <section id="workflows" class="wrap">
   <div class="sec-hdr reveal">
-    <span class="sec-label">24 个工作流技能</span>
+    <span class="sec-label">25 个工作流技能</span>
     <h2>为每种任务提供恰当的流程</h2>
     <p>为各种开发场景量身打造的工作流，从紧急热修复到完整的功能开发</p>
   </div>
@@ -821,6 +821,15 @@
       <div class="what"><strong>它做什么：</strong>定位状态文件、解析并校验状态、加载 Context 小节里的关键决策与规格计划、汇报当前阶段与进度，然后从中断处精确继续。构建失败三次触发的 REPLAN 也可以从这里接上。</div>
       <div class="cmd">/spring-boot-workflows:resume</div>
     </div>
+
+    <div class="wf-item">
+      <div class="emoji">&#128269;</div>
+      <h4>验证（Verify）</h4>
+      <div class="desc">跑完整门禁 &mdash; 构建、分析器、测试、覆盖率、CVE</div>
+      <div class="what"><strong>它做什么：</strong>七个阶段 &mdash; DETECT、BUILD、STATIC、TEST、SECURITY、DIFF、REPORT。依次执行 SpotBugs/PMD/Checkstyle、完整测试套件、从报告算出的 JaCoCo 覆盖率门禁、OWASP 依赖 CVE 扫描、凭据扫描与差异启发式审查。构建文件里没有对应插件的检查一律报 <strong>SKIPPED，绝不报 PASS</strong>。产出人类可读报告与机器可读 <code>findings.json</code>。</div>
+      <div class="cmd">/spring-boot-workflows:verify [--quick] [--strict]</div>
+      <span class="wf-tag new">NEW</span>
+    </div>
   </div>
 </section>
 
@@ -829,7 +838,7 @@
   <div class="sec-hdr reveal">
     <span class="sec-label">推荐路径</span>
     <h2>按你此刻的状态选技能</h2>
-    <p>24 个工作流不是 24 种平级选择 &mdash;&mdash; 它们串成一条从「想清楚」到「发布上线」的链路</p>
+    <p>25 个工作流不是 25 种平级选择 &mdash;&mdash; 它们串成一条从「想清楚」到「发布上线」的链路</p>
   </div>
 
   <div class="path-q reveal">
