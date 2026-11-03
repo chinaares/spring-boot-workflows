@@ -14,7 +14,7 @@
   "plugins": [
     {
       "name": "spring-boot-workflows",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Spring Boot workflows with proportional quality gates, multi-session state, Spring rules and review checklists.",
       "source": "./",
       "category": "development",

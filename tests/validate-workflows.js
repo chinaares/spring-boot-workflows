@@ -94,6 +94,11 @@ const WORKFLOW_PHASES = {
     hasImplement: false,
     hasPR: false,
   },
+  "verify": {
+    phases: ["DETECT", "BUILD", "STATIC", "TEST", "SECURITY", "DIFF", "REPORT"],
+    hasImplement: false,
+    hasPR: false,
+  },
 };
 
 // Skills that may intentionally reference .claude/ for project-local output
@@ -912,6 +917,453 @@ function validateInitFeatureParity() {
 }
 
 // ============================================================
+// Domain Skills (the spring-boot-3 / spring-boot-4 version trees)
+// ============================================================
+
+/**
+ * Minimal frontmatter reader for the subset of YAML the skills use:
+ * `key: value`, `key: >` (folded, with or without inline text), and
+ * `key:` followed by an indented block. Good enough to check the fields the
+ * house conventions depend on.
+ */
+function parseFrontmatter(content) {
+  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return null;
+  const lines = m[1].split("\n");
+  const out = {};
+  for (let i = 0; i < lines.length; i++) {
+    const km = lines[i].match(/^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
+    if (!km) continue;
+    const key = km[1];
+    const rest = km[2].trim();
+    if (rest.startsWith(">") || rest.startsWith("|")) {
+      const buf = [];
+      const inline = rest.slice(1).trim();
+      if (inline) buf.push(inline);
+      let j = i + 1;
+      while (j < lines.length && (lines[j].startsWith("  ") || lines[j].trim() === "")) {
+        if (lines[j].trim() === "") { buf.push(""); j++; continue; }
+        buf.push(lines[j].trim());
+        j++;
+      }
+      out[key] = buf.join(" ").replace(/\s+/g, " ").trim();
+      i = j - 1;
+    } else {
+      out[key] = rest.replace(/^["']|["']$/g, "");
+    }
+  }
+  return out;
+}
+
+function validateDomainSkills() {
+  section("Domain Skills (version trees)");
+
+  const FORBIDDEN = [
+    { token: "${CLAUDE_PLUGIN_ROOT}", hint: "Use <plugin-root>" },
+    { token: "${user_config", hint: "Use plain English references to plugin settings" },
+    { token: "${CLAUDE_PLUGIN_DATA}", hint: "This variable does not exist in Claude Code plugins" },
+  ];
+
+  const boot4Names = [];
+
+  for (const container of SKILL_CONTAINERS) {
+    const containerDir = path.join(PLUGIN_ROOT, "skills", container);
+    test(`${container}: directory exists`, fs.existsSync(containerDir));
+    if (!fs.existsSync(containerDir)) continue;
+
+    const topics = fs.readdirSync(containerDir, { withFileTypes: true })
+      .filter(e => e.isDirectory());
+
+    for (const topic of topics) {
+      const label = `${container}/${topic.name}`;
+      const skillPath = path.join(containerDir, topic.name, "SKILL.md");
+      test(`${label}: SKILL.md exists`, fs.existsSync(skillPath));
+      if (!fs.existsSync(skillPath)) continue;
+
+      const content = fs.readFileSync(skillPath, "utf8");
+      const fm = parseFrontmatter(content);
+
+      test(`${label}: valid YAML frontmatter`, fm !== null);
+      if (!fm) continue;
+
+      // The router refers to skills by their frontmatter name, so a mismatch
+      // between the name and the directory silently breaks routing.
+      test(`${label}: has name field`, Boolean(fm.name));
+      test(
+        `${label}: name matches directory`,
+        fm.name === topic.name,
+        `frontmatter name is "${fm.name}", directory is "${topic.name}"`,
+      );
+      if (container === "spring-boot-4") boot4Names.push(fm.name || topic.name);
+
+      // House convention: a domain-skill description says when to use the
+      // skill. Boot 4 opens with "Use when"; Boot 3 prefixes the variant
+      // marker before the same sentence.
+      test(`${label}: has description field`, Boolean(fm.description));
+      test(
+        `${label}: description says when to use the skill`,
+        typeof fm.description === "string" && fm.description.includes("Use when"),
+        fm.description ? `got: "${fm.description.slice(0, 60)}"` : undefined,
+      );
+      if (container === "spring-boot-3") {
+        test(
+          `${label}: description carries the Boot 3 variant marker`,
+          typeof fm.description === "string" && fm.description.startsWith("(Boot 3 variant"),
+          fm.description ? `got: "${fm.description.slice(0, 60)}"` : undefined,
+        );
+      } else {
+        test(
+          `${label}: description opens with "Use when"`,
+          typeof fm.description === "string" && fm.description.startsWith("Use when"),
+          fm.description ? `got: "${fm.description.slice(0, 60)}"` : undefined,
+        );
+      }
+
+      // Domain skills carry no orchestration rules — they are composed, not run.
+      test(`${label}: declares no orchestration rules`, fm.rules === undefined);
+
+      for (const { token, hint } of FORBIDDEN) {
+        test(
+          `${label}: no ${token} references`,
+          !content.includes(token),
+          hint,
+        );
+      }
+
+      // agents/openai.yaml is optional, but when present it must be the
+      // 4-line interface shim.
+      const agentYaml = path.join(containerDir, topic.name, "agents", "openai.yaml");
+      if (fs.existsSync(agentYaml)) {
+        const yaml = fs.readFileSync(agentYaml, "utf8");
+        for (const field of ["display_name", "short_description", "default_prompt"]) {
+          test(`${label}: agents/openai.yaml has ${field}`, yaml.includes(`${field}:`));
+        }
+        test(`${label}: agents/openai.yaml has an interface block`, yaml.includes("interface:"));
+      }
+    }
+  }
+
+  // Every vendored Boot 4 skill must be reachable from the router — a skill
+  // nothing can select is dead weight in the knowledge set.
+  const routerPath = path.join(PLUGIN_ROOT, "skills", "spring-context", "SKILL.md");
+  const router = fs.existsSync(routerPath) ? fs.readFileSync(routerPath, "utf8") : "";
+  for (const name of boot4Names) {
+    test(
+      `router: reaches ${name}`,
+      router.includes(name),
+      `${name} is not mentioned in skills/spring-context/SKILL.md`,
+    );
+  }
+}
+
+// ============================================================
+// Config consistency
+// ============================================================
+
+/**
+ * Minimal YAML reader for config/defaults.yml — nested maps, inline flow
+ * mappings `{a: b}`, inline flow sequences `[a, b]`, and scalars. Block
+ * scalars (`|`) are kept as their literal marker; nothing in the assertions
+ * below reads them.
+ */
+function parseSimpleYaml(text) {
+  const root = {};
+  const stack = [{ indent: -1, node: root }];
+  const coerce = (v) => {
+    const t = v.trim().replace(/^["']|["']$/g, "");
+    if (/^-?\d+$/.test(t)) return parseInt(t, 10);
+    if (/^-?\d*\.\d+$/.test(t)) return parseFloat(t);
+    return t;
+  };
+  for (const raw of text.split("\n")) {
+    if (!raw.trim() || raw.trim().startsWith("#")) continue;
+    const indent = raw.length - raw.trimStart().length;
+    const line = raw.trim().replace(/\s+#.*$/, "");
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+    const parent = stack[stack.length - 1].node;
+    const km = line.match(/^([^:]+):\s*(.*)$/);
+    if (!km) continue;
+    const key = km[1].trim();
+    const rest = km[2].trim();
+    if (rest === "") {
+      const node = {};
+      parent[key] = node;
+      stack.push({ indent, node });
+    } else if (rest.startsWith("{") && rest.endsWith("}")) {
+      const obj = {};
+      for (const part of rest.slice(1, -1).split(",")) {
+        const idx = part.indexOf(":");
+        if (idx === -1) continue;
+        obj[part.slice(0, idx).trim()] = coerce(part.slice(idx + 1));
+      }
+      parent[key] = obj;
+    } else if (rest.startsWith("[") && rest.endsWith("]")) {
+      parent[key] = rest.slice(1, -1).split(",").map(coerce).filter(v => v !== "");
+    } else {
+      parent[key] = coerce(rest);
+    }
+  }
+  return root;
+}
+
+/** Every file the plugin ships, as one searchable string. */
+function collectPluginText(extensions = [".md", ".yml", ".json", ".js", ".py", ".tmpl", ".yaml"]) {
+  const parts = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === ".git" || entry.name === "node_modules") continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (extensions.some(ext => entry.name.endsWith(ext))) {
+        parts.push(fs.readFileSync(full, "utf8"));
+      }
+    }
+  };
+  walk(PLUGIN_ROOT);
+  return parts.join("\n");
+}
+
+function validateConfigConsistency() {
+  section("Configuration consistency");
+
+  const defaultsPath = path.join(PLUGIN_ROOT, "config", "defaults.yml");
+  test("config/defaults.yml exists", fs.existsSync(defaultsPath));
+  if (!fs.existsSync(defaultsPath)) return;
+
+  const config = parseSimpleYaml(fs.readFileSync(defaultsPath, "utf8"));
+  const pluginText = collectPluginText();
+
+  // --- a config key that nothing reads is a key that does nothing ---
+  // These are the gate-shaped keys: each one silently disables a check when
+  // it is changed, so each one must be read by at least one skill or rule.
+  const mustBeLive = [
+    "guards.enabled",
+    "guards.strict",
+    "guards.config",
+    "quality.proportional",
+    "quality.self_review",
+    "quality.focused_gate",
+    "workflows.review.checklist",
+    "workflows.review.size_thresholds",
+    "workflows.review.context_thresholds",
+    "workflows.test.default_coverage",
+    "ci.features",
+    "ci.java_versions",
+    "verify.checks",
+    "verify.coverage_threshold",
+    "verify.coverage_scope",
+    "verify.static_analysis",
+    "verify.static_fail_on",
+    "verify.dependency_scan",
+    "verify.secret_scan",
+    "verify.findings_file",
+  ];
+
+  for (const keyPath of mustBeLive) {
+    test(
+      `config: ${keyPath} is read somewhere`,
+      pluginText.includes(keyPath),
+      `${keyPath} is declared in config/defaults.yml but nothing references it`,
+    );
+  }
+
+  // --- the review thresholds must agree with the rule that documents them ---
+  const thresholds = config.workflows && config.workflows.review
+    ? config.workflows.review.size_thresholds
+    : null;
+  test("config: workflows.review.size_thresholds exists", Boolean(thresholds));
+  test("config: size_thresholds.light exists", Boolean(thresholds && thresholds.light));
+  test("config: size_thresholds.standard exists", Boolean(thresholds && thresholds.standard));
+
+  const rule03Path = path.join(PLUGIN_ROOT, "skills", "_orchestration", "rules", "rule-03-quality-gate.md");
+  const rule03 = fs.existsSync(rule03Path) ? fs.readFileSync(rule03Path, "utf8") : "";
+  test("rule-03 exists", rule03.length > 0);
+
+  if (thresholds && thresholds.light && thresholds.standard && rule03) {
+    // The rule must document the shipped numbers, not a second set of numbers.
+    for (const value of [
+      thresholds.light.max_files,
+      thresholds.light.max_lines,
+      thresholds.standard.max_files,
+    ]) {
+      test(
+        `rule-03 documents threshold ${value}`,
+        rule03.includes(String(value)),
+        `config says ${value} but rule-03 does not mention it`,
+      );
+    }
+    test(
+      "rule-03 defers to the config block as the source of truth",
+      /size_thresholds/.test(rule03),
+      "rule-03 must read the thresholds from config instead of hardcoding them",
+    );
+    // The per-key paths matter: a project config generated before the block was
+    // reshaped has no `light`/`standard` keys, so the rule has to fall back
+    // key by key and say what to do with the legacy shape.
+    for (const keyPath of [
+      "size_thresholds.light.max_files",
+      "size_thresholds.light.max_lines",
+      "size_thresholds.standard.max_files",
+    ]) {
+      test(
+        `rule-03 names the config path ${keyPath}`,
+        rule03.includes(keyPath),
+        "rule-03 must name each threshold's config path so the fallback is per key",
+      );
+    }
+    test(
+      "rule-03 explains how to handle a legacy thresholds block",
+      /legacy/i.test(rule03) && /defaults/i.test(rule03),
+      "rule-03 must say what to do with a project config that predates the current shape",
+    );
+  }
+
+  // --- verify skill must exist and be registered ---
+  const verifyPath = path.join(PLUGIN_ROOT, "skills", "verify", "SKILL.md");
+  test("skills/verify/SKILL.md exists", fs.existsSync(verifyPath));
+  if (fs.existsSync(verifyPath)) {
+    const verify = fs.readFileSync(verifyPath, "utf8");
+    const verifyFm = parseFrontmatter(verify);
+    test("verify: has name field", Boolean(verifyFm && verifyFm.name));
+    test("verify: name is 'verify'", verifyFm && verifyFm.name === "verify");
+    // Every check the config can turn on must be handled by the skill.
+    for (const phase of ["DETECT", "BUILD", "STATIC", "TEST", "SECURITY", "DIFF", "REPORT"]) {
+      test(`verify: declares phase ${phase}`, verify.includes(`Phase ${phase}`) || verify.includes(phase));
+    }
+    test(
+      "verify: writes a machine-readable findings file",
+      verify.includes("findings.json"),
+    );
+    test(
+      "verify: reports a skipped check as skipped",
+      /SKIPPED/.test(verify),
+    );
+  }
+
+  // --- every orchestration rule index referenced by a skill must exist ---
+  const rulesDir = path.join(PLUGIN_ROOT, "skills", "_orchestration", "rules");
+  const ruleFiles = fs.existsSync(rulesDir)
+    ? fs.readdirSync(rulesDir).filter(f => /^rule-\d\d-.*\.md$/.test(f))
+    : [];
+  const skillsDir = path.join(PLUGIN_ROOT, "skills");
+  for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith("_") || SKILL_CONTAINERS.includes(entry.name)) continue;
+    const p = path.join(skillsDir, entry.name, "SKILL.md");
+    if (!fs.existsSync(p)) continue;
+    const fm = parseFrontmatter(fs.readFileSync(p, "utf8"));
+    if (!fm || fm.rules === undefined) continue;
+    const indices = String(fm.rules).match(/\d+/g) || [];
+    for (const idx of indices) {
+      test(
+        `${entry.name}: rules index ${idx} exists`,
+        Number(idx) < ruleFiles.length,
+        `only ${ruleFiles.length} rules exist (indices 0..${ruleFiles.length - 1})`,
+      );
+    }
+  }
+}
+
+// ============================================================
+// Guards template
+// ============================================================
+
+/**
+ * The guard rules are regexes that a broken one silently stops matching —
+ * the fork-bomb pattern was a no-op for months because `:` alternated with
+ * the rest. Every pattern must compile, and the ones that used to be broken
+ * must still match.
+ */
+function validateGuardsTemplate() {
+  section("Guards Template");
+
+  const tmplPath = path.join(PLUGIN_ROOT, "templates", "guards.yml.tmpl");
+  test("templates/guards.yml.tmpl exists", fs.existsSync(tmplPath));
+  if (!fs.existsSync(tmplPath)) return;
+
+  const content = fs.readFileSync(tmplPath, "utf8");
+
+  // Pull the pattern lists out without a YAML dependency: the template lists
+  // each entry as a single-quoted string under a two-space-indented key.
+  const lists = { block_patterns: [], warn_patterns: [], token_patterns: [] };
+  let current = null;
+  for (const raw of content.split("\n")) {
+    const keyMatch = raw.match(/^ {2}([a-z_]+):\s*$/);
+    if (keyMatch) {
+      current = keyMatch[1];
+      continue;
+    }
+    if (!current || !lists[current]) continue;
+    // The pattern entries may carry a trailing comment.
+    const item = raw.match(/^ {4}-\s+'(.*)'\s*(?:#.*)?$/);
+    if (item) lists[current].push(item[1].replace(/''/g, "'"));
+  }
+
+  for (const key of Object.keys(lists)) {
+    test(`guards: ${key} has entries`, lists[key].length > 0);
+    for (const pattern of lists[key]) {
+      let compiles = true;
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        compiles = false;
+      }
+      test(`guards: ${key} pattern compiles`, compiles, pattern);
+    }
+  }
+
+  // The template must use single quotes for the pattern lists — a double-quoted
+  // YAML string turns `\.` into an invalid escape and the whole file fails to
+  // parse, which silently disables every rule in it.
+  for (const key of Object.keys(lists)) {
+    const keyLine = content.split("\n").findIndex(l => l === `  ${key}:`);
+    test(`guards: ${key} key present in template`, keyLine !== -1);
+    if (keyLine === -1) continue;
+    const lines = content.split("\n").slice(keyLine + 1);
+    const items = [];
+    for (const line of lines) {
+      if (/^ {2}\S/.test(line)) break;
+      if (/^ {4}-/.test(line)) items.push(line);
+    }
+    const doubleQuoted = items.filter(l => /-\s+"/.test(l));
+    test(
+      `guards: ${key} uses single-quoted patterns`,
+      doubleQuoted.length === 0,
+      doubleQuoted[0] ? doubleQuoted[0].trim() : undefined,
+    );
+  }
+
+  // Spot-check the patterns that used to be silently broken.
+  const matches = (key, sample) => lists[key].some(p => new RegExp(p).test(sample));
+  test("guards: fork bomb pattern matches", matches("block_patterns", ":(){:|:&};:"));
+  test("guards: 'rm -rf .' matches", matches("block_patterns", "rm -rf ."));
+  test("guards: 'mkfs.ext4' matches", matches("block_patterns", "mkfs.ext4"));
+  test("guards: DROP TABLE matches", matches("block_patterns", "DROP TABLE users"));
+  test("guards: benign command does not match", !matches("block_patterns", "echo hello"));
+  test("guards: SQL UPDATE warns", matches("warn_patterns", "UPDATE users SET name = 'x' WHERE id = 1"));
+  test("guards: AWS key detected", matches("token_patterns", "AKIAIOSFODNN7EXAMPLE"));
+  test("guards: GitHub token detected", matches("token_patterns", "ghp_1234567890abcdefghijklmnopqrstuvwxyz"));
+  test("guards: inline URL credentials detected", matches("token_patterns", "postgres://user:secret@localhost/db"));
+  test("guards: ordinary code does not trip the token scan", !matches("token_patterns", "int total = 42;"));
+
+  // The path lists are globs, not regexes — a glob pattern in a regex list
+  // would match nothing.
+  test(
+    "guards: protected_paths are globs",
+    content.includes("    - \"*.pem\""),
+    "path lists must stay glob-shaped",
+  );
+  test(
+    "guards: skill documents the two matchers",
+    (() => {
+      const skillPath = path.join(PLUGIN_ROOT, "skills", "guards", "SKILL.md");
+      const skill = fs.existsSync(skillPath) ? fs.readFileSync(skillPath, "utf8") : "";
+      return /regex/i.test(skill) && /glob/i.test(skill);
+    })(),
+    "skills/guards/SKILL.md must state which matcher applies to which list",
+  );
+}
+
+// ============================================================
 // Run
 // ============================================================
 console.log("+" + "=".repeat(58) + "+");
@@ -923,6 +1375,9 @@ validatePluginFiles();
 validateDirectoryStructure();
 validateLanguageFiles();
 validateSkills();
+validateDomainSkills();
+validateConfigConsistency();
+validateGuardsTemplate();
 validateCiTemplates();
 validatePlatformSupport();
 validateOrchestrationRules();

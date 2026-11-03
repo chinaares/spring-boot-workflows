@@ -240,6 +240,9 @@ For each phase in the plan:
 2. **Run all tests**: all existing tests MUST pass. If failures caused by new feature, fix them. If pre-existing, report but don't block.
 3. **Run new tests**: verify tests from the plan pass.
 4. **Coverage check**: if coverage tooling is configured, report coverage for new code. Target: `workflows.test.default_coverage` from config (default 90%).
+   - Produce the number with a real command, never an estimate. If `jacoco-maven-plugin` is declared in the build file: `./mvnw -B jacoco:report`, then read `target/site/jacoco/jacoco.xml` and compute `covered / (covered + missed) × 100` from the **report-level** `<counter>` elements (direct children of `<report>` — summing the per-class counters double-counts).
+   - Gradle: `./gradlew jacocoTestReport`, then read `build/reports/jacoco/test/jacocoTestReport.xml`.
+   - No coverage plugin in the build → report coverage as **not measured**, and say which plugin would provide it. Do not report "0%" and do not present an unmeasured result as a pass.
 5. **Verification checklist**:
    - All existing tests pass
    - New tests pass
@@ -262,6 +265,28 @@ For each phase in the plan:
 ### Pre-PR quality gate (Rule 3)
 
 Load checklists proportional to change size. Self-check applicable items. Fix Critical/High violations before proceeding.
+
+### Executable verification
+
+The checklist gate is a judgement; this is an execution. When the project has a
+build file, run the verification loop before pushing:
+
+1. Read `<plugin-root>/skills/verify/SKILL.md` and execute it inline (Rule 9 —
+   no separate state file, write to this workflow's output directory).
+2. Use `--quick` when the change is small and the build is already known green —
+   but never skip it entirely, and never claim a check passed that was skipped.
+3. Quote the report's numbers in the PR body (tests passed, coverage %, static
+   analysis findings). A `SKIPPED` check is reported as skipped, never as passed.
+4. If the loop reports `NOT READY`, fix the failing items or ask the user
+   whether to proceed. Do not create the PR on a failing verification without
+   an explicit decision.
+
+### Guard check
+
+If `guards.enabled` is `true` in `.workflows/config.yml` (fall back to
+`<plugin-root>/config/defaults.yml`), read `<plugin-root>/skills/guards/SKILL.md`
+and run the check over the diff against the base branch. On `GUARDS: BLOCK`,
+stop before pushing and report the findings.
 
 ### Create PR
 

@@ -11,7 +11,7 @@ rules: [0, 1, 4, 5, 7, 10, 12, 17]
 ```
 /spring-boot-workflows:ci-setup
   [--platform github|gitea|both]
-  [--features test,coverage,spotbugs,artifact]
+  [--features test,coverage,coverage-gate,spotbugs,pmd,checkstyle,dependency-check,artifact]
   [--java <version>]
   [--runner <label>]
   [--mirror aliyun|tsinghua|none]
@@ -20,6 +20,11 @@ rules: [0, 1, 4, 5, 7, 10, 12, 17]
 ```
 
 **Defaults**: platform auto-detected from the git remote; features `test,coverage,artifact`; Java version from `pom.xml` (fallback: 25); runner `ubuntu-latest`; mirror `none`; integration tests run when the build declares them (use `--skip-it` to opt out).
+
+**A feature whose Maven plugin is not declared in the project's build file is
+dropped with a warning** — never emitted as a step that always fails. The one
+exception is `dependency-check`, which is invoked by goal and therefore works
+without a `<plugin>` block (but is slow and needs the NVD API — see Phase 2.3).
 
 **Scope (phase 1)**: Maven only. Docker, SSH deploy, Gradle, and JDK-source variants are tracked in `TODO.md`.
 
@@ -66,7 +71,11 @@ Identify the platform, build setup, and existing CI so the generated workflow ma
 | Plugin / file | Enables |
 |---|---|
 | `jacoco-maven-plugin` | `coverage` feature (`jacoco:report`) |
+| `jacoco-maven-plugin` **with a `<rules>` block** | `coverage-gate` feature (`jacoco:check`) — without rules, `jacoco:check` passes trivially, so the block is dropped |
 | `spotbugs-maven-plugin` + `spotbugs-include.xml` / `spotbugs-exclude.xml` | `spotbugs` feature |
+| `maven-pmd-plugin` | `pmd` feature |
+| `maven-checkstyle-plugin` | `checkstyle` feature |
+| `dependency-check-maven` (OWASP) | `dependency-check` feature — also invocable by goal without a `<plugin>` block |
 | `maven-surefire-plugin` | Test reports (always uploaded) |
 | `maven-failsafe-plugin`, `*IT.java`, `org.testcontainers` | Integration tests — `verify` will run them |
 | `.mvn/settings.xml` | Reuse it; read `<localRepository>` if present |
@@ -79,6 +88,11 @@ Integration tests often need CI-only configuration (profile properties, secrets)
 1. Main branch: `git symbolic-ref refs/remotes/origin/HEAD` (strip `refs/remotes/origin/`); fall back to `git.branches.main` from config, then `main`.
 2. Development branch: `git branch -r` — include only if the configured dev branch exists remotely.
 3. Java version: `pom.xml` property → `--java` flag → config → default `25`.
+
+   `ci.java_versions` in the config is a **list**, but phase 1 renders a **single**
+   JDK — the first entry. If the list has more than one entry, use the first and
+   tell the user: "the JDK matrix is phase 2 (see TODO.md) — the workflow is
+   generated for JDK `<first>` only". Do not silently drop the other entries.
 
 **>> Phase complete** — write output to `.workflows/ci-setup/01-detect.md`
 
@@ -106,19 +120,34 @@ Integration:    run (failsafe/testcontainers detected) | skipped (-DskipITs)
 Cache:          ~/.m2/repository
 Features:       test, coverage, artifact
 Secrets:        none (GITEA_TOKEN only for private/cross-repo checkout)
+                NVD_API_KEY only when `dependency-check` is selected
 ```
 
 If a target file already exists, also show `diff` against the render and ask: **update**, **skip**, or **keep**.
 
 ### 2.3 — Feature Resolution Rules
 
+A feature whose plugin is missing is **dropped and reported** — never emitted as a
+step that fails on every run.
+
 - `coverage` requested but no JaCoCo plugin → **drop it and warn**; do not generate a failing step.
+- `coverage-gate` requested but no JaCoCo plugin → **drop it and warn**.
+- `coverage-gate` requested, JaCoCo present but **no `<rules>` block** → **drop it and warn**. `jacoco:check` without a `<minimum>` passes no matter what the coverage is, so keeping the step would report a green gate that gates nothing. Recommend adding the rules from `<plugin-root>/skills/verify/references/maven-quality-plugins.md`, or run `/spring-boot-workflows:verify` locally — it computes the coverage gate from the report and needs no pom change.
 - `spotbugs` requested but no SpotBugs plugin → **drop it and warn**.
+- `pmd` requested but no PMD plugin → **drop it and warn**.
+- `checkstyle` requested but no Checkstyle plugin → **drop it and warn**.
+- `dependency-check` requested → keep it even without a `<plugin>` block, because the goal is invoked by coordinates (`org.owasp:dependency-check-maven:check`). Warn that the first run downloads the NVD feed and takes 10+ minutes, and that `NVD_API_KEY` should be set as a repository secret.
 - `artifact` requested → resolve `{ARTIFACT_GLOB}`:
   - `<finalName>` present → `target/<finalName>.jar`
   - otherwise → `target/*.jar`
 - `--mirror` not `none` and `.mvn/settings.xml` is absent → plan to create it.
 - If `.mvn/settings.xml` exists and declares `<localRepository>`, set `{CACHE_PATH}` to **exactly that path** (expanded); otherwise use `~/.m2/repository`.
+
+### 2.3.1 — Static Analysis Overlap
+
+PMD and Checkstyle overlap heavily. When both are requested, keep both but tell
+the user they will report many of the same findings, and recommend picking one
+as the primary style gate.
 
 ### 2.4 — Integration Test Policy
 
@@ -180,7 +209,7 @@ Template blocks are delimited by:
       # <<< optional:<feature>
 ```
 
-Keep a block only when its feature was selected; delete the whole block (including the marker lines) otherwise. Supported: `coverage`, `spotbugs`, `artifact`.
+Keep a block only when its feature was selected; delete the whole block (including the marker lines) otherwise. Supported: `coverage`, `coverage-gate`, `spotbugs`, `pmd`, `checkstyle`, `dependency-check`, `artifact`.
 
 Marker rules — a malformed marker silently leaks a step into the output, so treat every deviation as an error and stop:
 
@@ -266,6 +295,7 @@ CI setup complete
     1. Review the generated files and commit them
     2. Push a branch to trigger the pipeline
     3. If it fails: /spring-boot-workflows:ci-fix
+    4. To run the same checks locally before pushing: /spring-boot-workflows:verify
 ```
 
 If both platforms were generated, remind the user that GitHub and Gitea each need their own secrets.

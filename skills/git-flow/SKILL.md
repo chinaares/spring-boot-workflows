@@ -43,9 +43,14 @@ Commit staged changes using the configured commit format.
    - `<type>` must be in the configured `types` list
    - Reject non-matching messages with a correct-format example
 3. **Protected branch check**: If current branch is in `git.protected`, abort — never commit directly to protected branches
-4. Stage files if none staged (prompt user to confirm which files)
-5. Create the commit: `git add <files> && git commit -m "<validated-message>"`
-6. Print commit hash and summary
+4. **Guard check** — if `guards.enabled` is `true` in `.workflows/config.yml` (fall back to `<plugin-root>/config/defaults.yml`), read `<plugin-root>/skills/guards/SKILL.md` and run the check over the staged files (`git diff --cached --name-only`). Run it *after* staging, so the check covers exactly what the commit will contain.
+   - `GUARDS: BLOCK` → **stop**. Report the findings and do not commit. `--force` is the user's decision, not yours.
+   - `GUARDS: WARN` → report the warnings and continue.
+   - `GUARDS: PASS` → continue.
+   - When `guards.enabled` is `false`, skip this step and say "guard check skipped (guards.enabled = false)".
+5. Stage files if none staged (prompt user to confirm which files)
+6. Create the commit: `git add <files> && git commit -m "<validated-message>"`
+7. Print commit hash and summary
 
 **Error**: If no changes staged and no untracked files, abort with "nothing to commit".
 
@@ -59,17 +64,20 @@ Create a pull request with configured settings.
 2. Base branch: `--base` flag > `git.pr.base_branch` > `develop`
 3. **Protected branch check**: Warn if target is `main`/`master` and source is not `release/` or `hotfix/`
 4. Read `<plugin-root>/reviews/` if it exists — include findings in PR body
-5. Push: `git push -u origin <current-branch>`
-6. Detect the platform and confirm its CLI is installed — see Rule 8 (`gh` for GitHub, `tea` for Gitea). If the CLI is missing, stop and say which one to install.
-7. Generate title from branch name (e.g., `feature/add-login` -> `feat: add login`)
-8. Generate body from `git log <base>..HEAD --oneline --no-merges`; use `git.pr.template` if configured
-9. Create the PR using the platform's CLI:
-   - **GitHub**: `gh pr create` with `--base`, `--title`, `--body`, `--draft`, `--reviewer`, `--label` (omit empty arrays)
-   - **Gitea**: `tea pr create` with `--base`, `--title`, `--description-file -`, `--draft`, `--labels` (omit empty arrays). Pass the body on stdin to avoid shell-quoting problems. Add `--login <name>` when `tea` has more than one configured instance (`tea login list`).
-10. Reviewers and assignees:
+5. **Guard check** — if `guards.enabled` is `true`, read `<plugin-root>/skills/guards/SKILL.md` and run the check over the whole diff against the base branch (`git diff --name-only <base>...HEAD`). A secret that reaches the remote cannot be undone by a later commit.
+   - `GUARDS: BLOCK` → **stop** before pushing. Report the findings.
+   - Otherwise continue.
+6. Push: `git push -u origin <current-branch>`
+7. Detect the platform and confirm its CLI is installed — see Rule 8 (`gh` for GitHub, `tea` for Gitea). If the CLI is missing, stop and say which one to install.
+8. Generate title from branch name (e.g., `feature/add-login` -> `feat: add login`)
+9. Generate body from `git log <base>..HEAD --oneline --no-merges`; use `git.pr.template` if configured
+10. Create the PR using the platform's CLI:
+    - **GitHub**: `gh pr create` with `--base`, `--title`, `--body`, `--draft`, `--reviewer`, `--label` (omit empty arrays)
+    - **Gitea**: `tea pr create` with `--base`, `--title`, `--description-file -`, `--draft`, `--labels` (omit empty arrays). Pass the body on stdin to avoid shell-quoting problems. Add `--login <name>` when `tea` has more than one configured instance (`tea login list`).
+11. Reviewers and assignees:
     - **GitHub**: pass `git.pr.reviewers` to `--reviewer`; there is no assignee setting in the config.
     - **Gitea**: `tea pr create` has no reviewer flag. Tell the user to request reviewers in the Gitea web UI (or via `POST /repos/{owner}/{repo}/pulls/{index}/requested_reviewers` with `{"reviewers": [...]}`). Only convert reviewers to `--assignees` when the user explicitly asks — they are different roles.
-11. Print PR URL
+12. Print PR URL
 
 ---
 

@@ -27,7 +27,7 @@
 
 **核心原则**：先规格后代码。先头脑风暴后计划。先计划后实现。状态跨会话持久化。每个 PR 之前必过质量门禁。Spring 感知（构建/测试命令与 Boot 主版本自动检测）。Git 流程可配置。
 
-**你将获得**：24 个工作流技能（以插件斜杠命令形式提供）、27 个内置 Spring Boot 领域技能、5 种头脑风暴技法、每次执行都会强制生效的 18 条编排规则、评审清单（通用 + Java + Spring Boot）、Java/Spring 编码规则、多会话持久化，以及单一的 YAML 配置文件。
+**你将获得**：25 个工作流技能（以插件斜杠命令形式提供）、27 个内置 Spring Boot 领域技能、5 种头脑风暴技法、每次执行都会强制生效的 18 条编排规则、评审清单（通用 + Java + Spring Boot）、Java/Spring 编码规则、一条真正执行构建的验证流水线，以及单一的 YAML 配置文件。
 
 ---
 
@@ -204,6 +204,8 @@ ci:
   runner: "ubuntu-latest"
   mirror: "none"                     # none | aliyun | tsinghua
   features: [test, coverage, artifact]
+  # test | coverage | coverage-gate | spotbugs | pmd | checkstyle
+  # | dependency-check | artifact
 
 workflows:
   new-feature:
@@ -230,7 +232,10 @@ workflows:
     tag_format: "v{version}"
   review:
     checklist: "auto"                # auto | none | <path>
-    size_thresholds: { small: 10, medium: 30, large: 50 }
+    size_thresholds:                 # 门禁档位 —— 唯一事实来源
+      light: { max_files: 3, max_lines: 50 }
+      standard: { max_files: 15 }
+    context_thresholds: { small: 10, medium: 30 }   # 评审技能前期读取多少上下文
   test:
     default_coverage: 90
     default_type: "unit"
@@ -255,7 +260,8 @@ chains: {}
   # hotfix: "ci-fix --pr latest"
 
 guards:
-  enabled: false
+  enabled: false                     # 自动守卫扫描的总开关
+  strict: false                      # true = WARN 也阻断操作
   config: ".workflows/guards.yml"
 
 learning:
@@ -267,6 +273,16 @@ quality:
   self_review: true
   focused_gate: true
   proportional: true
+
+verify:                              # /verify 执行流水线
+  checks: [build, static, test, coverage, security, diff]
+  coverage_threshold: 80             # 百分比
+  coverage_scope: line               # line | branch
+  static_analysis: [spotbugs, pmd, checkstyle]
+  static_fail_on: error              # error | warning
+  dependency_scan: true              # OWASP dependency-check —— 慢，需要网络与 NVD key
+  secret_scan: true
+  findings_file: "findings.json"
 
 progress:
   visual: true                       # 状态文件里写 Mermaid 进度图
@@ -284,7 +300,7 @@ telemetry:
 
 ## 4. 推荐路径：按项目状态选择技能
 
-插件提供 24 个工作流技能。它们不是 24 种平级选择 —— 而是覆盖了从「想清楚要做什么」到「发布上线」的完整链路。本节按**你此刻项目所处的状态**给出选择依据。
+插件提供 25 个工作流技能。它们不是 25 种平级选择 —— 而是覆盖了从「想清楚要做什么」到「发布上线」的完整链路。本节按**你此刻项目所处的状态**给出选择依据。
 
 ### 4.1 先问三个问题
 
@@ -463,11 +479,58 @@ IDLE -> <收集/诊断> -> <方案> -> <计划> -> <实现> -> <验证> -> <PR> 
 
 每个 Critical 项都要给出**显式结论**（`PASS: <项> — <证据>` / `FAIL: <项> — <问题> — <修法>` / `N/A: <项> — <原因>`）。「检查过了，没问题」不算证据。
 
+上表阈值唯一来源是 `.workflows/config.yml` 里的 `workflows.review.size_thresholds`，Rule 3 与 `review` 技能都读它。
+
+```yaml
+workflows:
+  review:
+    size_thresholds:
+      light: { max_files: 3, max_lines: 50 }
+      standard: { max_files: 15 }
+    context_thresholds: { small: 10, medium: 30 }
+```
+
+`context_thresholds` 是另一件事：它控制 `review` 技能前期读取多少上下文，而不是门禁要求哪些严重级别。旧版插件生成的配置可能仍带 `size_thresholds: { small: 10, medium: 30, large: 50 }` —— 那些**不是**门禁档位。Rule 3 会读 `light`/`standard` 键，缺失时回退到插件默认值；重跑 `/setup`（或直接改这个块）即可采用当前形状。
+
 ```yaml
 quality:
   self_review: true      # PR 前自检清单
   focused_gate: true     # 按改动文件类别加权检查
   proportional: true     # 门禁档位随改动规模伸缩
+```
+
+### 验证流水线（`/verify`）
+
+清单门禁是判断，`/verify` 是**执行** —— 它真的跑构建、跑分析器、跑测试、跑覆盖率门禁，然后报出数字。
+
+七个阶段：**DETECT → BUILD → STATIC → TEST → SECURITY → DIFF → REPORT**
+
+| 阶段 | 实际执行 |
+|---|---|
+| DETECT | 构建工具、wrapper、已声明的质量插件、阈值、差异基线 |
+| BUILD | `mvn clean verify -DskipTests` —— 编译并打包 |
+| STATIC | `spotbugs:check`、`pmd:check`、`checkstyle:check` |
+| TEST | 完整测试套件 + 对照 `verify.coverage_threshold` 的 JaCoCo 覆盖率门禁 |
+| SECURITY | OWASP 依赖 CVE 扫描 + 凭据扫描 |
+| DIFF | 对改动行做启发式审查 |
+| REPORT | 人类可读报告（`report.md`）+ 机器可读 `findings.json` |
+
+构建文件里没有对应插件的检查一律报 **`SKIPPED`，绝不报 `PASS`** —— 报告会指出该补哪个插件。覆盖率门禁直接解析 JaCoCo 报告并与阈值比对，因此只要项目有 JaCoCo 就生效，不需要在 POM 里写 `<rules>`。
+
+产物落在 `.workflows/verify/`：`report.md` 给人看，`findings.json`（`schema: spring-boot-workflows/verify-findings@1`）给需要二次门禁或聚合结果的工具消费。每项检查只记录一种状态 —— `PASS`、`FAIL`、`SKIPPED` 或 `ERROR`；`SKIPPED` 必须带 `skipped_reason`，跳过的检查永远不算通过。若当前已有其他工作流在活动，产物会写入该工作流的输出目录，文件名改为 `verify-report.md` / `verify-findings.json`。
+
+`/new-feature` 会在 PR 阶段自动调用；`/ci-setup` 能把同样的检查生成为 CI 步骤。
+
+```yaml
+verify:
+  checks: [build, static, test, coverage, security, diff]
+  coverage_threshold: 80   # 百分比
+  coverage_scope: line     # line | branch
+  static_analysis: [spotbugs, pmd, checkstyle]
+  static_fail_on: error    # error | warning
+  dependency_scan: true    # OWASP dependency-check —— 慢，需要网络与 NVD key
+  secret_scan: true
+  findings_file: "findings.json"
 ```
 
 ---
@@ -491,8 +554,9 @@ quality:
 | `/spring-boot-workflows:hotfix <description> [--crashlytics <issue-id>] [--log <path>] [--branch <生产分支>]` | 生产环境紧急修复 |
 | `/spring-boot-workflows:diagnose <symptom> [--error <错误信息>] [--file <path>] [--since <commit-or-date>]` | 系统化的缺陷排查（只定位不修复） |
 | `/spring-boot-workflows:ci-fix [--run <run-id>] [--pr <pr-number>] [--platform github\|gitea]` | 修复 CI/CD 失败 |
-| `/spring-boot-workflows:ci-setup [--platform github\|gitea\|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun\|tsinghua\|none] [--skip-it] [--dry-run]` | 生成 GitHub/Gitea Actions CI 工作流 |
+| `/spring-boot-workflows:ci-setup [--platform github\|gitea\|both] [--features test,coverage,coverage-gate,spotbugs,pmd,checkstyle,dependency-check,artifact] [--java <version>] [--runner <label>] [--mirror aliyun\|tsinghua\|none] [--skip-it] [--dry-run]` | 生成 GitHub/Gitea Actions CI 工作流 |
 | `/spring-boot-workflows:test <target> [--coverage <pct>] [--type unit\|integration]` | 生成测试并统计覆盖率 |
+| `/spring-boot-workflows:verify [--quick] [--strict] [--base <branch>] [--skip <check>] [--dependency-scan] [--dry-run]` | 跑完整验证流水线 —— 构建、静态分析、测试、覆盖率门禁、CVE 扫描、差异审查 |
 | `/spring-boot-workflows:review <pr-number> [--strict] [--focus <area>]` | 评审一个拉取请求 |
 | `/spring-boot-workflows:release <version> [--type major\|minor\|patch]` | 准备一个带版本号的发布 |
 | `/spring-boot-workflows:git-flow branch <type> <name>` \| `commit <message>` \| `pr [--base <branch>]` \| `merge <branch>` | Git 分支/提交/PR/合并操作 |
@@ -602,7 +666,7 @@ quality:
 ### CI 生成（CI Setup）
 
 ```text
-/spring-boot-workflows:ci-setup [--platform github|gitea|both] [--features test,coverage,spotbugs,artifact] [--java <version>] [--runner <label>] [--mirror aliyun|tsinghua|none] [--skip-it] [--dry-run]
+/spring-boot-workflows:ci-setup [--platform github|gitea|both] [--features test,coverage,coverage-gate,spotbugs,pmd,checkstyle,dependency-check,artifact] [--java <version>] [--runner <label>] [--mirror aliyun|tsinghua|none] [--skip-it] [--dry-run]
 ```
 
 检测平台、构建系统、Java 版本与质量工具，生成测试、覆盖率、静态分析与制品上传步骤。会校验 GitHub 与 Gitea 在上下文命名空间、Action URL 上的差异，并保证 Maven 缓存路径与实际本地仓库一致。
@@ -638,7 +702,7 @@ quality:
 | 技能 | 命令 | 做什么 |
 |---|---|---|
 | **Setup** | `/spring-boot-workflows:setup [--with-guards]` | 面向**已有项目**：检测技术栈（Maven/Gradle、Boot 主版本、持久化栈），建 `.workflows/` 目录结构，由插件默认值 **+ 你的 userConfig** 合成 `.workflows/config.yml`，更新 `.gitignore`。`--with-guards` 同时生成 `.workflows/guards.yml`。**新项目请用 `/new-project`** —— 它取代本技能 |
-| **Start** | `/spring-boot-workflows:start` | 先检查有没有活动工作流（给出恢复 / 暂停 / 放弃三个选项），再按 **Build / Fix / Improve / Ship / Think / Meta** 六组列出 17 个工作流，收集完参数后直接执行对应技能 |
+| **Start** | `/spring-boot-workflows:start` | 先检查有没有活动工作流（给出恢复 / 暂停 / 放弃三个选项），再按 **Build / Fix / Improve / Ship / Think / Meta** 六组列出 18 个工作流，收集完参数后直接执行对应技能 |
 | **Resume** | `/spring-boot-workflows:resume` | 定位状态文件、解析并校验状态、加载上下文与规格计划、汇报当前阶段与进度，从中断处继续 |
 
 **Start 会替你做入口判断** —— 不确定用哪个技能时，从 `/start` 开始即可，它同时也是查看当前活动工作流的方式。
@@ -649,7 +713,7 @@ quality:
 
 | 技能 | 命令 | 做什么 |
 |---|---|---|
-| **Guards** | `init` / `check [--staged] [--force]` / `report` | 按 `.workflows/guards.yml` 扫描文件：硬编码令牌（`AKIA`、`sk-`、`ghp_`、`Bearer`、私钥、JWT）、受保护路径、`rm -rf` 等危险命令。`BLOCK` 直接拦截，`WARN` 仅提示。`--force` 放行会留痕到 `.workflows/history/guard-overrides.log` |
+| **Guards** | `init` / `check [--staged] [--force]` / `report` | 按 `.workflows/guards.yml` 扫描文件：硬编码令牌（`AKIA`、`sk-`、`ghp_`、`Bearer`、私钥、JWT）、受保护路径、`rm -rf` 等危险命令。`block_patterns` / `warn_patterns` / `token_patterns` 是**逐行匹配文件内容的 POSIX ERE 正则**；`protected_paths` / `no_commit_patterns` 是**匹配文件路径的 shell glob** —— `*.env` 在 glob 列表里有效，在正则列表里什么也匹配不到。`BLOCK` 直接拦截，`WARN` 仅提示（除非 `guards.strict` 为 true）；匹配到的凭据值绝不回显。`--force` 放行会留痕到 `.workflows/history/guard-overrides.log`。`init` 能识别 1.1 之前的旧配置（缺 `strict` 或 `token_patterns`），只补缺失键、保留项目自己的模式 |
 | **Template** | `save <name>` / `list` / `use <name> <feature>` | 把已完成工作流的规格 + 计划存成带 `{feature}` 占位符的模板。`use` 会预填规格与计划并从 **PLAN 阶段**继续，GATHER/SPEC/BRAINSTORM 标记为 SKIPPED |
 | **Learn** | `capture` / `list` / `apply <topic>` | 从已完成工作流中提取可复用模式（架构决策、实现套路、测试策略），带标签存入 `.workflows/learned/`。被使用 2 次以上的模式标记为「已验证」，并在后续头脑风暴中自动浮现 |
 | **Metrics** | `/` / `<workflow-name>` / `trends` | 读取遥测数据（阶段结束后写入的 JSON lines），展示完成率、平均耗时、瓶颈阶段。`trends` 对比最近 10 个与此前 10 个工作流，看速度变化与 REPLAN 频率 |
@@ -759,7 +823,7 @@ quality:
 
 | 路径（相对于插件根目录） | 用途 |
 |-------------------------------|---------|
-| `skills/*/SKILL.md` | 25 个文件：24 个工作流技能 + `spring-context` 路由器（自动发现） |
+| `skills/*/SKILL.md` | 26 个文件：25 个工作流技能 + `spring-context` 路由器（自动发现） |
 | `skills/_orchestration/RULES.md` | 全局编排规则 |
 | `templates/*.tmpl` | 6 个模板（spec、plan、state、skill、changelog、guards.yml） |
 | `rules/*.md` | Java 与 Spring Boot 编码规则 |

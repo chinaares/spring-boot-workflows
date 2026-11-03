@@ -1,42 +1,73 @@
 # Safety guards configuration
 # These rules prevent dangerous operations during workflow execution.
+#
+# Matching semantics (read before editing):
+#   block_patterns / warn_patterns / token_patterns  → POSIX extended REGEX,
+#     matched against the file content, one line at a time. Regex, not glob:
+#     `*.env` matches nothing; `\.env$` does.
+#   protected_paths / no_commit_patterns              → shell GLOB,
+#     matched against the file path.
+#
+# The pattern lists use SINGLE-quoted YAML strings on purpose: a backslash is
+# a literal character there, so `\.` stays `\.` instead of becoming an
+# invalid YAML escape. Use single quotes for any pattern containing a
+# backslash.
+#
+# `block_patterns` is evaluated first. A line that matches both a block and a
+# warn pattern is a BLOCK.
 
 guards:
   enabled: true
+  strict: false            # true = a WARN finding also blocks the operation
 
   # Commands that are BLOCKED (cannot execute under any circumstance)
   block_patterns:
-    - "rm -rf /"
-    - "rm -rf ~"
-    - "rm -rf ."
-    - "rm -fr"
-    - "rm -Rf"
-    - "rm --recursive --force"
-    - "git push --force main"
-    - "git push --force master"
-    - "git push -f main"
-    - "git push -f master"
-    - "git reset --hard"
-    - "DROP DATABASE"
-    - "DROP TABLE"
-    - "TRUNCATE TABLE"
-    - "> /dev/sda"
-    - "mkfs."
-    - "dd if="
-    - ":(){:|:&};:"
+    - 'rm -rf /'
+    - 'rm -rf ~'
+    - 'rm -rf \.'
+    - 'rm -fr'
+    - 'rm -Rf'
+    - 'rm --recursive --force'
+    - 'git push --force main'
+    - 'git push --force master'
+    - 'git push -f main'
+    - 'git push -f master'
+    - 'git reset --hard'
+    - 'DROP DATABASE'
+    - 'DROP TABLE'
+    - 'TRUNCATE TABLE'
+    - '> /dev/sda'
+    - 'mkfs\.'
+    - 'dd if='
+    - ':\(\)\{:\|:\&\};:'
 
   # Commands that trigger a WARNING (ask user before executing)
-  # Note: patterns here should not overlap with block_patterns above
+  # Note: a pattern that also matches block_patterns is still a BLOCK.
   warn_patterns:
-    - "git push --force"
-    - "git reset"
-    - "rm -r"
-    - "DELETE FROM"
-    - "UPDATE .* SET .* WHERE"
-    - "git checkout -- ."
-    - "git clean -fd"
-    - "npm publish"
-    - "pip install --upgrade"
+    - 'git push --force'
+    - 'git reset'
+    - 'rm -r'
+    - 'DELETE FROM'
+    - 'UPDATE .* SET .* WHERE'
+    - 'git checkout -- \.'
+    - 'git clean -fd'
+    - 'npm publish'
+    - 'pip install --upgrade'
+
+  # Credentials that must never appear in a tracked file.
+  # Checked against the file content; the matched value is never echoed.
+  token_patterns:
+    - '\bAKIA[0-9A-Z]{16}\b'                                   # AWS access key
+    - '\bgh[pousr]_[A-Za-z0-9]{36,}\b'                           # GitHub token
+    - '\bglpat-[A-Za-z0-9_-]{20,}\b'                             # GitLab token
+    - '\bxox[abprs]-[A-Za-z0-9-]{10,}\b'                         # Slack token
+    - '\bsk-(proj-)?[A-Za-z0-9_-]{20,}\b'                        # OpenAI-style key
+    - '\bsk-ant-[A-Za-z0-9_-]{20,}\b'                            # Anthropic key
+    - '\bAIza[0-9A-Za-z_-]{35}\b'                                # Google API key
+    - '-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----'
+    - '\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b'  # JWT
+    - '[Bb]earer\s+[A-Za-z0-9._~+/-]{20,}=*'                       # Bearer literal
+    - '[A-Za-z][A-Za-z0-9+.-]*://[^/\s:@]+:[^/\s:@]+@'            # inline credentials
 
   # File paths that should never be read, written, or committed
   protected_paths:

@@ -1,14 +1,15 @@
 # spring-boot-workflows
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](VERSION)
 
 **面向 Claude Code 的 Spring Boot 开发工作流 —— 结构化的功能交付、按比例伸缩的质量门禁、跨会话状态保持，以及 Spring 专用规则。**
 
 `spring-boot-workflows` 是 **claude-workflows** 编排引擎针对 Java/Spring 项目的特化版本。
-它完整保留了工作流引擎 —— 24 个阶段驱动的技能、18 条编排规则、持久化状态、按比例
+它完整保留了工作流引擎 —— 25 个阶段驱动的技能、18 条编排规则、持久化状态、按比例
 伸缩的评审门禁 —— 只把多语言资产集替换为 Spring Boot 版本：Java 编码规则、Spring Boot
-编码规则、Spring 专用评审清单，以及 27 个内置的 Spring Boot 领域技能，覆盖 JPA、REST、
-安全、数据库迁移、事务与测试。
+编码规则、Spring 专用评审清单，27 个内置的 Spring Boot 领域技能（覆盖 JPA、REST、
+安全、数据库迁移、事务与测试），以及一条真正会跑起来的验证流水线：开 PR 之前实际执行
+构建、静态分析、测试与覆盖率门禁。
 
 ---
 
@@ -42,6 +43,19 @@ claude plugin configure spring-boot-workflows
 ```
 
 > **代码仓库**：[github.com/chinaares/spring-boot-workflows](https://github.com/chinaares/spring-boot-workflows)
+
+### 从 1.0.x 升级
+
+`claude plugin update spring-boot-workflows` 会刷新已安装的副本，但**不会**重写项目里的
+`.workflows/config.yml` 或 `.workflows/guards.yml`。1.1.0 中改过形状的块：
+
+| 文件 | 变更 | 处理方式 |
+|---|---|---|
+| `config.yml` | `workflows.review.size_thresholds` 改为 `light` / `standard`；`small` / `medium` / `large` **不是**门禁档位 | 重跑 `/setup`，或直接改这个块 |
+| `config.yml` | 新增 `context_thresholds` 与 `verify:` 段 | 重跑 `/setup` 补上 |
+| `guards.yml` | 新增 `strict` 与 `token_patterns` | 运行 `/guards init`；它只补缺失键，保留你已有的模式 |
+
+新键缺失时 Rule 3 会回退到插件默认值，所以旧配置仍能工作 —— 但在迁移之前不会使用新的门禁档位。
 
 ---
 
@@ -96,7 +110,7 @@ claude plugin configure spring-boot-workflows
 
 所有技能的命名空间均为 `spring-boot-workflows`。
 
-### 工作流技能（24 个）
+### 工作流技能（25 个）
 
 | 技能 | 命令 | 说明 |
 |-------|---------|-------------|
@@ -114,6 +128,7 @@ claude plugin configure spring-boot-workflows
 | 头脑风暴 | `/spring-boot-workflows:brainstorm` | 5 种结构化的头脑风暴技法 |
 | 范围评估 | `/spring-boot-workflows:scope` | 在选择工作流之前分析任务复杂度 |
 | 测试 | `/spring-boot-workflows:test` | 生成测试并分析覆盖率 |
+| 验证 | `/spring-boot-workflows:verify` | 完整验证流水线 —— 构建、静态分析、测试、覆盖率门禁、CVE 扫描、差异审查 |
 | 复盘 | `/spring-boot-workflows:retrospective` | 分析工作流历史以寻找改进点 |
 | 学习 | `/spring-boot-workflows:learn` | 捕获并复用工作流模式 |
 | 度量 | `/spring-boot-workflows:metrics` | 工作流执行分析 |
@@ -211,6 +226,8 @@ userConfig → 默认值** 解析。userConfig 是兜底：填补探测没能解
 - **Git 流程**：分支命名模式、提交格式、PR 设置、合并策略
 - **工作流行为**：要求/跳过头脑风暴、测试、规格；计划阶段上限
 - **质量门禁**：按比例伸缩的评审强度、清单选择
+- **验证**：`verify.checks`、覆盖率阈值与口径、静态分析器、CVE 与凭据扫描、findings 文件
+- **守卫**：`guards.enabled`（提交/推送前跑一次守卫扫描）、`guards.strict`
 - **Spring**：`project.spring.boot_major`、`build_tool`、`persistence`
 - **遥测**：可选的执行度量
 - **技能别名**：自定义命令快捷方式
@@ -231,12 +248,54 @@ userConfig → 默认值** 解析。userConfig 是兜底：填补探测没能解
 
 | 改动规模 | 门禁级别 |
 |-------------|-----------|
-| 1-3 个文件、≤50 行 | **轻量**：仅关键安全检查 |
+| 1-3 个文件、≤50 行 | **轻量**：仅通用清单的 Critical 项；跳过语言专用清单 |
 | 4-15 个文件 | **标准**：通用 + Spring 清单（高/严重级别） |
 | 超过 15 个文件 | **完整**：全部清单、全部严重级别 |
 
 所有「严重/高」级别的条目必须在创建 PR 之前通过，且每项都要给出明确证据
 （`PASS:` / `FAIL:` / `N/A:`）。
+
+阈值唯一来源是 `.workflows/config.yml` 里的 `workflows.review.size_thresholds`，
+Rule 3 与 `review` 技能都读它。
+
+---
+
+## 验证流水线
+
+上面的清单门禁是判断，`/verify` 是**执行** —— 它真的跑构建、跑分析器、跑测试、
+跑覆盖率门禁，然后报出数字。
+
+```text
+/spring-boot-workflows:verify              # 完整流水线
+/spring-boot-workflows:verify --quick      # 只跑构建 + 测试 + 覆盖率
+/spring-boot-workflows:verify --strict     # 警告也算失败
+```
+
+七个阶段：**DETECT → BUILD → STATIC → TEST → SECURITY → DIFF → REPORT**
+
+| 阶段 | 实际执行 | 配置项 |
+|---|---|---|
+| DETECT | 构建工具、wrapper、已声明的质量插件、阈值、差异基线 | `verify.checks` |
+| BUILD | `mvn clean verify -DskipTests` —— 编译并打包 | — |
+| STATIC | `spotbugs:check`、`pmd:check`、`checkstyle:check` | `verify.static_analysis`、`verify.static_fail_on` |
+| TEST | 完整测试套件 + 对照 `verify.coverage_threshold` 的 **JaCoCo 覆盖率门禁** | `verify.coverage_threshold`、`verify.coverage_scope` |
+| SECURITY | OWASP 依赖 CVE 扫描 + 凭据扫描 | `verify.dependency_scan`、`verify.secret_scan` |
+| DIFF | 对改动行做启发式审查 | — |
+| REPORT | 人类可读报告 + 机器可读 `findings.json` | `verify.findings_file` |
+
+**构建文件里没有对应插件的检查一律报 `SKIPPED`，绝不报 `PASS`** —— 报告会指出
+该补哪个插件。覆盖率门禁直接解析 JaCoCo 报告并与阈值比对，因此只要项目有 JaCoCo
+就能生效，不需要在 POM 里写 `<rules>`。
+
+产物落在 `.workflows/verify/`：`report.md` 给人看，`findings.json` 给任何需要
+二次门禁或聚合结果的工具消费。每项检查只记录一种状态
+（`PASS` / `FAIL` / `SKIPPED` / `ERROR`），`SKIPPED` 必须带 `skipped_reason`。
+若当前已有其他工作流在活动，产物会写入该工作流的输出目录，文件名改为
+`verify-report.md` / `verify-findings.json`。
+
+`/new-feature` 的 PR 阶段会自动调用 `/verify`；`/ci-setup` 则能把同样的检查
+生成为 CI 步骤（`coverage`、`coverage-gate`、`spotbugs`、`pmd`、`checkstyle`、
+`dependency-check`）。
 
 ---
 

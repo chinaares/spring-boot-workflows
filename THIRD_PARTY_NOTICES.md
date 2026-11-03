@@ -35,8 +35,11 @@ Vendored under `skills/spring-boot-4/`:
 `creating-springboot-projects`), `spring-boot-migration` (from `springboot-migration`),
 plus the `references/` and `assets/` trees of `spring-data-jpa`.
 
-Also vendored: `scripts/scan_migration_issues.py` (858 lines) — an unmodified copy of the
-Boot 4 / Modulith 2 / Testcontainers 2 migration scanner.
+Also vendored: the Boot 4 / Modulith 2 / Testcontainers 2 migration scanner
+(`scripts/scan_migration_issues.py`, 858 lines) — an unmodified copy of the
+upstream script. It was previously kept in two places (the plugin root and the
+`spring-boot-migration` skill); it now lives **only** at the plugin root, so the
+`/migrate` workflow and the `spring-boot-migration` skill cannot drift apart.
 
 Local modifications: skill `name` fields renamed as listed above.
 

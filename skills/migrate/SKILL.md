@@ -35,6 +35,17 @@ Document current state before any changes.
 | `architecture` | Current pattern, target pattern, boundary identification |
 | `database` | Current schema, target schema, data volume estimates |
 
+**Deterministic scan first** — before inferring anything from the model, run
+the migration scanner. It reports `CRITICAL` / `WARNING` / `INFO` findings with
+`file:line` and a suggested fix:
+
+```bash
+python3 <plugin-root>/scripts/scan_migration_issues.py <project-root>
+```
+
+The scanner covers the Boot 4 / Modulith 2 / Testcontainers 2 migrations. It is
+evidence, not a decision — read the findings, then decide what to change.
+
 **>> Phase complete** — write output to `.workflows/<type>/01-analyze.md`
 
 ## Phase 2: BRAINSTORM

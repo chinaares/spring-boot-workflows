@@ -92,7 +92,19 @@ That works on both platforms, but note:
 - GitHub surfaces Surefire results through checks/annotations; Gitea has no
   equivalent test-report UI, so artifacts are the portable baseline.
 - JaCoCo HTML reports are uploaded as artifacts on both platforms.
-- Static analysis (SpotBugs) is artifact-only on both.
+- Static analysis is a **gating step** on both platforms, not artifact-only:
+  `spotbugs:check`, `pmd:check`, and `checkstyle:check` each fail the job when
+  they find a violation. No analyzer report is uploaded as an artifact — the
+  analyzer prints its findings to the job log, so read them there.
+- `coverage-gate` runs `jacoco:check`, which fails the job when the build's
+  JaCoCo `<rules>` block declares a `<minimum>` that is not met. It is dropped
+  by `ci-setup` when the build has no `<rules>` — see the feature-resolution
+  rules in `ci-setup/SKILL.md`.
+- `dependency-check` runs the OWASP analyzer by goal. It needs the NVD API key
+  (`NVD_API_KEY` secret) to be usable, and the first run downloads the NVD
+  feed — expect 10+ minutes and cache
+  `~/.m2/repository/org/owasp/dependency-check-data` if the runner is
+  ephemeral.
 
 ## Feature gaps to verify per Gitea version
 
